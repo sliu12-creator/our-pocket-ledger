@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>我们的小账本 v0.9.1</title>
+<style>
+*{box-sizing:border-box}
+body{
+font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+min-height:100vh;
+margin:0;
+color:#27495c;
+background:
+radial-gradient(circle at 18% 8%,rgba(255,255,255,.95),rgba(255,255,255,0) 30%),
+radial-gradient(circle at 82% 16%,rgba(198,235,241,.58),rgba(198,235,241,0) 34%),
+linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
+}
+body:before{
+content:"";
+position:fixed;
+inset:0;
+pointer-events:none;
+background:linear-gradient(135deg,rgba(255,255,255,.42),rgba(213,236,241,.16) 42%,rgba(255,255,255,.28));
+}
+.wrap{position:relative;max-width:760px;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom))}
+.card{
+background:rgba(255,255,255,.56);
+border:1px solid rgba(255,255,255,.78);
+border-radius:24px;
+-webkit-backdrop-filter:blur(18px) saturate(135%);
+backdrop-filter:blur(18px) saturate(135%);
+padding:20px;
+box-shadow:0 18px 45px rgba(84,126,144,.15),inset 0 1px 0 rgba(255,255,255,.72);
+margin-bottom:16px;
+}
+h2,h3{margin:0 0 12px;font-weight:700;letter-spacing:0}
+h2{font-size:25px;color:#244a5d}
+h3{font-size:19px;color:#2b5264}
+label{display:block;margin:4px 0 0;font-size:14px;color:#547183}
+input,select,textarea,button{width:100%;box-sizing:border-box;font:inherit}
+input,select,textarea{
+padding:13px 14px;
+border-radius:16px;
+border:1px solid rgba(168,201,211,.72);
+background:rgba(255,255,255,.68);
+color:#27495c;
+outline:none;
+margin-top:7px;
+margin-bottom:13px;
+box-shadow:inset 0 1px 0 rgba(255,255,255,.78);
+}
+input:focus,select:focus,textarea:focus{border-color:#8bc8d5;box-shadow:0 0 0 4px rgba(143,202,214,.22)}
+textarea{height:76px;resize:none}
+button{
+padding:14px;
+border:none;
+border-radius:999px;
+background:linear-gradient(180deg,#8fcfdb,#69b7c8);
+color:white;
+cursor:pointer;
+box-shadow:0 10px 22px rgba(83,153,171,.22);
+}
+button:active{transform:scale(.99)}
+#list{display:grid;gap:16px}
+.dateGroup{display:grid;gap:12px}
+.dateTitle{
+display:flex;
+align-items:center;
+gap:10px;
+margin:4px 2px 0;
+font-size:14px;
+font-weight:650;
+color:#557888;
+}
+.dateTitle:before,.dateTitle:after{content:"";height:1px;flex:1;background:rgba(137,174,187,.28)}
+.item{
+position:relative;
+min-height:104px;
+padding:16px 92px 16px 16px;
+border:1px solid rgba(255,255,255,.76);
+border-radius:20px;
+background:rgba(255,255,255,.48);
+-webkit-backdrop-filter:blur(16px) saturate(140%);
+backdrop-filter:blur(16px) saturate(140%);
+box-shadow:0 14px 32px rgba(82,124,143,.13),inset 0 1px 0 rgba(255,255,255,.72);
+}
+.item b{display:block;margin-bottom:7px;font-size:15px;font-weight:600;color:#416879}
+.subcategory{display:block;margin-bottom:7px;font-size:14px;color:#6f919e}
+.amount{display:block;margin-bottom:8px;font-size:30px;font-weight:760;color:#2E6F92}
+.amount.income{color:#4FAF72}
+.record-time{display:block;margin-bottom:4px;color:#7897a4}
+.record-note{display:block;line-height:1.45;color:#8aa2ab}
+.actions{position:absolute;right:12px;bottom:12px;display:flex;gap:8px}
+.iconBtn{
+display:grid;
+place-items:center;
+width:34px;
+height:34px;
+padding:0;
+border-radius:50%;
+background:rgba(255,255,255,.62);
+color:#4e7988;
+box-shadow:0 8px 18px rgba(77,126,143,.14),inset 0 1px 0 rgba(255,255,255,.78);
+}
+.iconBtn.delete{color:#9d6670}
+.meta{color:#789}
+.msg{
+background:rgba(246,252,253,.58);
+border:1px solid rgba(255,255,255,.7);
+border-radius:18px;
+padding:14px;
+margin-top:14px;
+color:#4e7180;
+}
+.small{font-size:.9em;color:#678}
+.monthlySummary{
+display:grid;
+gap:8px;
+margin:0 0 14px;
+padding:11px 13px;
+border:1px solid rgba(255,255,255,.72);
+border-radius:16px;
+background:rgba(239,250,252,.48);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
+}
+.summaryTitle{font-size:15px;font-weight:650;color:#416879}
+.summaryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.summaryItem{min-width:0}
+.summaryLabel{display:block;margin-bottom:3px;font-size:13px;color:#7897a4}
+.summaryAmount{display:block;font-size:17px;font-weight:700;color:#2E6F92;white-space:nowrap}
+.summaryAmount.income{color:#4FAF72}
+.recentSection{margin:0 0 14px}
+.recentSection h3{margin-bottom:8px;font-size:17px}
+.recentList{display:grid;gap:8px}
+.recentItem{
+display:grid;
+gap:4px;
+padding:11px 13px;
+border:1px solid rgba(255,255,255,.72);
+border-radius:16px;
+background:rgba(255,255,255,.42);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
+}
+.recentMain{display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-width:0}
+.recentLabel{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-weight:600;color:#416879}
+.recentAmount{flex:0 0 auto;font-size:17px;font-weight:700;color:#2E6F92;white-space:nowrap}
+.recentAmount.income{color:#4FAF72}
+.recentTime{font-size:13px;color:#7897a4}
+.viewLedgerBtn{margin:0 0 16px;padding:12px;background:rgba(255,255,255,.66);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
+.fullLedgerView{
+position:fixed;
+z-index:1100;
+inset:0;
+overflow-y:auto;
+padding:calc(18px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom));
+background:
+radial-gradient(circle at 18% 8%,rgba(255,255,255,.95),rgba(255,255,255,0) 30%),
+linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
+}
+.fullLedgerHeader{display:flex;align-items:center;gap:12px;max-width:760px;margin:0 auto 18px}
+.fullLedgerHeader h2{margin:0;font-size:22px}
+.backBtn{width:auto;padding:9px 12px;border-radius:999px;background:rgba(255,255,255,.68);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
+.fullLedgerList{display:grid;gap:16px;max-width:760px;margin:0 auto}
+#mask,#deleteMask{z-index:1200!important;padding:0 18px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#mask>div,#deleteMask>div{
+background:rgba(255,255,255,.78)!important;
+border:1px solid rgba(255,255,255,.82);
+box-shadow:0 22px 48px rgba(49,86,103,.22);
+-webkit-backdrop-filter:blur(18px) saturate(135%);
+backdrop-filter:blur(18px) saturate(135%);
+}
+#saveEdit,#cancelEdit,#cancelDelete,#confirmDelete{margin-top:8px}
+#cancelEdit,#cancelDelete{background:rgba(255,255,255,.7);color:#4c7180}
+#confirmDelete{background:linear-gradient(180deg,#d9959b,#c6757e)}
+@media (max-width:520px){
+.wrap{padding-left:14px;padding-right:14px}
+.card{border-radius:22px;padding:18px}
+.item{padding-right:82px}
+h2{font-size:23px}
+.summaryAmount{font-size:16px}
+.recentItem{padding:10px 12px}
+.recentAmount{font-size:16px}
+.fullLedgerView{padding-left:14px;padding-right:14px}
+.fullLedgerHeader h2{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<h2>我们的小账本 · v0.9.1</h2>
+<p class="small">Foundation：本地保存已完成（LocalStorage）</p>
+
+<div class="monthlySummary">
+<div class="summaryTitle">🌊 本月小结</div>
+<div class="summaryGrid">
+<div class="summaryItem"><span class="summaryLabel">收入</span><strong class="summaryAmount income" id="monthlyIncome">+ ¥0</strong></div>
+<div class="summaryItem"><span class="summaryLabel">支出</span><strong class="summaryAmount" id="monthlyExpense">- ¥0</strong></div>
+<div class="summaryItem"><span class="summaryLabel">结余</span><strong class="summaryAmount" id="monthlyBalance">¥0</strong></div>
+</div>
+</div>
+
+<div class="recentSection">
+<h3>最近记录</h3>
+<div class="recentList" id="recentList"></div>
+</div>
+
+<button class="viewLedgerBtn" id="viewLedgerBtn">📖 查看完整账本</button>
+
+<label>金额</label>
+<input id="amount" inputmode="decimal">
+
+<label>这笔钱是？</label>
+<select id="type">
+<option>💰 收入</option>
+<option>💸 支出</option>
+</select>
+
+<label id="categoryLabel">来自哪里？</label>
+<select id="category"></select>
+
+<div id="subcategoryField">
+<label>具体是什么？</label>
+<select id="subcategory"></select>
+</div>
+
+<label>备注</label>
+<textarea id="note"></textarea>
+
+<button id="saveBtn">记录这一笔</button>
+
+<div class="msg" id="ash">😽 欢迎回来，宝宝。</div>
+</div>
+
+</div>
+
+<div class="fullLedgerView" id="fullLedgerView" style="display:none">
+<div class="fullLedgerHeader">
+<button class="backBtn" id="backToHome">← 返回</button>
+<h2>📖 完整账本</h2>
+</div>
+<div class="fullLedgerList" id="fullLedgerList"></div>
+</div>
+
+
+<script>
+const KEY="ourLedger_v032";
+const MSGS=[
+"收到啦，这一笔我帮宝宝收好了。🤍",
+"今天也一起认真生活。😽",
+"谢谢你继续和我一起记录今天。"
+];
+let ledger=JSON.parse(localStorage.getItem(KEY)||"[]");
+let editingId=null;
+const INCOME_CATEGORIES=["💼 工资","🧑‍💻 兼职","🧧 红包","↩️ 退款","📈 投资","♻️ 出二手","💰 其它"];
+const EXPENSE_CATEGORIES={
+ "🍜 吃饭":["🌅 早餐","🍱 中餐","🍽️ 晚餐","🍪 零食","🥬 买菜","🍎 水果","🌙 夜宵","🍜 其它"],
+ "🛍️ 购物":["🧻 生活用品","👕 服装","👟 鞋子","💍 首饰","👜 包包","💄 护肤彩妆","🛍️ 其它"],
+ "🚗 出行":["🚌 公交","🚇 地铁","🚄 火车","✈️ 飞机","🚢 轮船","🚲 骑车","⛽ 加油","🚗 其它"],
+ "🏠 住房":["💧 水费","⚡ 电费","🌐 网费","📱 话费","🔥 燃气费","🏠 其它"],
+ "📚 教育":["📖 书籍","🎓 学费","📝 考试报名费","📚 其它"],
+ "🎮 娱乐":["🎤 演唱会","🎼 音乐会","🎬 电影","🎡 游乐园","🎮 游戏","🎤 KTV","✈️ 旅游","🎲 其它"],
+ "🎁 人情":["🎁 礼物","🧧 发红包","☕ 打赏","💒 份子钱","❤️ 其它"],
+ "🏥 医疗":["🩺 挂号费","🏥 住院费","💊 药品","🩹 其它"],
+ "📦 其它":["📦 其它"]
+};
+
+document.body.insertAdjacentHTML("beforeend",`
+<div id="mask" style="display:none;position:fixed;inset:0;background:#0005">
+<div style="max-width:360px;margin:8vh auto;background:#fff;padding:18px;border-radius:18px;max-height:84vh;overflow-y:auto">
+<h3>编辑这一笔</h3>
+<label>金额</label><input id="eAmount" type="number" step="0.01" style="width:100%">
+<label>这笔钱是？</label>
+<select id="eType" style="width:100%"><option>💰 收入</option><option>💸 支出</option></select>
+<label id="eCategoryLabel">来自哪里？</label>
+<select id="eCategory" style="width:100%"></select>
+<div id="eSubcategoryField">
+<label>具体是什么？</label>
+<select id="eSubcategory" style="width:100%"></select>
+</div>
+<label>备注</label><textarea id="eNote" style="width:100%;height:70px"></textarea>
+<div style="margin-top:12px">
+<button id="saveEdit">保存</button>
+<button id="cancelEdit">取消</button>
+</div>
+</div></div>`);
+
+function save(){localStorage.setItem(KEY,JSON.stringify(ledger));}
+
+// 根据选中的支出分类更新具体项目选项，并默认选中第一个选项
+// 输入参数：category，当前选中的支出分类文字；subcategorySelect，可选的具体项目下拉框
+// 返回结果：无，直接更新具体项目下拉框
+function updateSubcategoryOptions(category,subcategorySelect=document.getElementById("subcategory")){
+ subcategorySelect.innerHTML="";
+ (EXPENSE_CATEGORIES[category]||[]).forEach(subcategory=>{
+   const option=document.createElement("option");
+   option.value=subcategory;
+   option.textContent=subcategory;
+   subcategorySelect.appendChild(option);
+ });
+}
+
+// 根据金额类型更新分类与具体项目控件
+// 输入参数：type，当前选中的金额类型文字；其余参数为可选的目标控件
+// 返回结果：无，直接更新分类选择框和具体项目区域
+function updateCategoryOptions(
+ type,
+ categorySelect=document.getElementById("category"),
+ subcategoryField=document.getElementById("subcategoryField"),
+ categoryLabel=document.getElementById("categoryLabel"),
+ subcategorySelect=document.getElementById("subcategory")
+){
+ const categories=type==="💰 收入"?INCOME_CATEGORIES:Object.keys(EXPENSE_CATEGORIES);
+ categorySelect.innerHTML="";
+ categories.forEach(category=>{
+   const option=document.createElement("option");
+   option.value=category;
+   option.textContent=category;
+   categorySelect.appendChild(option);
+ });
+ const isIncome=type==="💰 收入";
+ categoryLabel.textContent=isIncome?"来自哪里？":"花在哪里？";
+ subcategoryField.style.display=isIncome?"none":"block";
+ if(!isIncome)updateSubcategoryOptions(categorySelect.value,subcategorySelect);
+}
+
+// 将新旧记录统一为金额类型、分类和具体项目，用于页面显示
+// 输入参数：record，LocalStorage 中的一条账本记录
+// 返回结果：包含 type、category、subcategory 的兼容分类对象
+function getRecordClassification(record){
+ if(record.type){
+   return {type:record.type,category:record.category||"",subcategory:record.subcategory||""};
+ }
+ if(isIncomeCategory(record.category)){
+   return {
+     type:"💰 收入",
+     category:record.category==="💰 收入"?(record.subcategory||"💰 其它"):record.category,
+     subcategory:""
+   };
+ }
+ return {type:"💸 支出",category:record.category||"📦 其它",subcategory:record.subcategory||""};
+}
+
+// 确保旧记录的分类值可以继续在编辑下拉框中被选中
+// 输入参数：selectElement，目标下拉框；value，需要保留的分类文字
+// 返回结果：无，必要时向下拉框补充旧分类选项
+function ensureSelectValue(selectElement,value){
+ if(!value||[...selectElement.options].some(option=>option.value===value))return;
+ const option=document.createElement("option");
+ option.value=value;
+ option.textContent=value;
+ selectElement.appendChild(option);
+}
+
+// 将一条记录的兼容分类填入编辑表单，并更新对应的分类控件
+// 输入参数：record，需要编辑的账本记录
+// 返回结果：无，直接更新编辑表单中的类型、分类和具体项目
+function fillEditClassification(record){
+ const classification=getRecordClassification(record);
+ const editType=document.getElementById("eType");
+ const editCategory=document.getElementById("eCategory");
+ const editSubcategory=document.getElementById("eSubcategory");
+ editType.value=classification.type;
+ updateCategoryOptions(
+   classification.type,
+   editCategory,
+   document.getElementById("eSubcategoryField"),
+   document.getElementById("eCategoryLabel"),
+   editSubcategory
+ );
+ ensureSelectValue(editCategory,classification.category);
+ editCategory.value=classification.category;
+ if(classification.type==="💸 支出"){
+   updateSubcategoryOptions(editCategory.value,editSubcategory);
+   ensureSelectValue(editSubcategory,classification.subcategory);
+   editSubcategory.value=classification.subcategory||editSubcategory.value;
+ }
+}
+
+// 判断分类或金额类型是否代表收入，兼容旧版收入分类
+// 输入参数：category，记录中的分类或金额类型文字
+// 返回结果：true 表示收入，false 表示支出
+function isIncomeCategory(category){
+ return category==="💰 收入"||category==="💼 收入"||INCOME_CATEGORIES.includes(category);
+}
+
+// 将金额格式化为：收入显示 +，支出显示 -，整数不显示小数，有小数时保留两位
+// 输入参数：amount，记录中的金额；category，记录分类
+// 返回结果：用于页面展示的金额字符串
+function formatAmount(amount,category){
+ const value=Number(amount)||0;
+ const prefix=isIncomeCategory(category)?"+ ¥":"- ¥";
+ return prefix+(Number.isInteger(value)?value:value.toFixed(2));
+}
+
+// 将记录时间转换为 Date，兼容旧版 LocalStorage 中保存的时间字符串
+// 输入参数：time，记录中的时间字符串
+// 返回结果：可用于格式化和分组的 Date 对象
+function parseRecordTime(time){
+ const timeText=String(time||"");
+ const timeParts=timeText.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+ if(timeParts){
+   return new Date(
+     Number(timeParts[1]),
+     Number(timeParts[2])-1,
+     Number(timeParts[3]),
+     Number(timeParts[4]),
+     Number(timeParts[5]),
+     Number(timeParts[6]||0)
+   );
+ }
+ const recordDate=new Date(timeText);
+ return Number.isNaN(recordDate.getTime())?new Date():recordDate;
+}
+
+// 将时间格式化为：20:36 / 昨天 20:36 / 7 月 3 日 / 2025/12/18
+// 输入参数：time，记录中的时间字符串
+// 返回结果：用于记录卡片展示的时间文字
+function formatRecordTime(time){
+ const recordDate=parseRecordTime(time);
+ const now=new Date();
+ const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+ const recordStart=new Date(recordDate.getFullYear(),recordDate.getMonth(),recordDate.getDate());
+ const dayDiff=Math.round((todayStart-recordStart)/86400000);
+ const hours=String(recordDate.getHours()).padStart(2,"0");
+ const minutes=String(recordDate.getMinutes()).padStart(2,"0");
+ if(dayDiff===0)return hours+":"+minutes;
+ if(dayDiff===1)return "昨天 "+hours+":"+minutes;
+ if(recordDate.getFullYear()===now.getFullYear())return (recordDate.getMonth()+1)+" 月 "+recordDate.getDate()+" 日";
+ return recordDate.getFullYear()+"/"+String(recordDate.getMonth()+1).padStart(2,"0")+"/"+String(recordDate.getDate()).padStart(2,"0");
+}
+
+// 将记录时间格式化为分组标题：今天 / 昨天 / 7 月 3 日 / 2025/12/18
+// 输入参数：time，记录中的时间字符串
+// 返回结果：用于账本分组标题的文字
+function formatGroupTitle(time){
+ const recordDate=parseRecordTime(time);
+ const now=new Date();
+ const todayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+ const recordStart=new Date(recordDate.getFullYear(),recordDate.getMonth(),recordDate.getDate());
+ const dayDiff=Math.round((todayStart-recordStart)/86400000);
+ if(dayDiff===0)return "今天";
+ if(dayDiff===1)return "昨天";
+ if(recordDate.getFullYear()===now.getFullYear())return (recordDate.getMonth()+1)+" 月 "+recordDate.getDate()+" 日";
+ return recordDate.getFullYear()+"/"+String(recordDate.getMonth()+1).padStart(2,"0")+"/"+String(recordDate.getDate()).padStart(2,"0");
+}
+
+// 将账本记录按时间从新到旧排序
+// 输入参数：records，账本记录数组
+// 返回结果：按记录时间从新到旧排列的新数组
+function sortRecordsByNewest(records){
+ return [...records].sort((firstRecord,secondRecord)=>parseRecordTime(secondRecord.time)-parseRecordTime(firstRecord.time));
+}
+
+// 按日期将账本记录分组，保持记录从新到旧展示
+// 输入参数：records，账本记录数组
+// 返回结果：包含标题和记录列表的分组数组
+function groupLedgerByDate(records){
+ const groupedLedger=[];
+ sortRecordsByNewest(records).forEach(record=>{
+   const title=formatGroupTitle(record.time);
+   let currentGroup=groupedLedger.find(group=>group.title===title);
+   if(!currentGroup){
+     currentGroup={title:title,records:[]};
+     groupedLedger.push(currentGroup);
+   }
+   currentGroup.records.push(record);
+ });
+ return groupedLedger;
+}
+
+// 获取首页需要展示的最近记录
+// 输入参数：records，账本记录数组
+// 返回结果：最多包含三条最新记录的数组
+function getRecentRecords(records){
+ return sortRecordsByNewest(records).slice(0,3);
+}
+
+// 计算当前自然月的收入、支出和结余，兼容没有 type 字段的旧记录
+// 输入参数：无，使用当前 ledger 数据和系统当前日期
+// 返回结果：包含 income、expense、balance 的本月汇总对象
+function calculateMonthlySummary(){
+ const now=new Date();
+ const monthlySummary={income:0,expense:0,balance:0};
+ ledger.forEach(record=>{
+   const recordDate=parseRecordTime(record.time);
+   if(recordDate.getFullYear()!==now.getFullYear()||recordDate.getMonth()!==now.getMonth())return;
+   const amount=Number(record.amount)||0;
+   if(isIncomeCategory(getRecordClassification(record).type))monthlySummary.income+=amount;
+   else monthlySummary.expense+=amount;
+ });
+ monthlySummary.balance=monthlySummary.income-monthlySummary.expense;
+ return monthlySummary;
+}
+
+// 将结余格式化为带正负号的金额，零结余不显示正负号
+// 输入参数：balance，本月收入减支出的结余数值
+// 返回结果：用于本月小结展示的结余金额字符串
+function formatBalanceAmount(balance){
+ if(balance===0)return "¥0";
+ return formatAmount(Math.abs(balance),balance>0?"💰 收入":"💸 支出");
+}
+
+// 将本月汇总结果显示在本月小结区域
+// 输入参数：无，使用 calculateMonthlySummary 的计算结果
+// 返回结果：无，直接更新本月小结中的金额文字和颜色
+function renderMonthlySummary(){
+ const monthlySummary=calculateMonthlySummary();
+ const balanceElement=document.getElementById("monthlyBalance");
+ document.getElementById("monthlyIncome").textContent=formatAmount(monthlySummary.income,"💰 收入");
+ document.getElementById("monthlyExpense").textContent=formatAmount(monthlySummary.expense,"💸 支出");
+ balanceElement.textContent=formatBalanceAmount(monthlySummary.balance);
+ balanceElement.classList.toggle("income",monthlySummary.balance>0);
+}
+
+// 将指定记录渲染为按日期分组的账本卡片
+// 输入参数：records，需要展示的记录数组；container，承载记录的页面元素
+// 返回结果：无，直接更新指定容器内容
+function renderRecordList(records,container){
+ container.innerHTML="";
+ if(!records.length){container.innerHTML="<div class='small'>暂无记录。</div>";return;}
+ groupLedgerByDate(records).forEach(group=>{
+   const groupElement=document.createElement("div");
+   groupElement.className="dateGroup";
+   groupElement.innerHTML=`<div class="dateTitle">${group.title}</div>`;
+   group.records.forEach(item=>{
+   const row=document.createElement("div");
+   row.className="item";
+   const classification=getRecordClassification(item);
+   const amountClass=isIncomeCategory(classification.type)?"amount income":"amount";
+   const category="<span class='subcategory'>"+classification.category+"</span>";
+   const subcategory=classification.subcategory?"<span class='subcategory'>"+classification.subcategory+"</span>":"";
+   row.innerHTML=`<b>${classification.type}</b>${category}${subcategory}<span class="${amountClass}">${formatAmount(item.amount,classification.type)}</span><span class='small record-time'>${formatRecordTime(item.time)}</span>${item.note?"<span class='small record-note'>"+item.note+"</span>":""}`;
+   const actions=document.createElement("div");
+   actions.className="actions";
+   const eb=document.createElement("button");
+   eb.className="iconBtn";
+   eb.textContent="✎";
+   eb.title="编辑";
+   eb.setAttribute("aria-label","编辑");
+   eb.onclick=()=>openEdit(item.id);
+   const db=document.createElement("button");
+   db.className="iconBtn delete";
+   db.textContent="×";
+   db.title="删除";
+   db.setAttribute("aria-label","删除");
+   db.onclick=()=>removeItem(item.id);
+   actions.appendChild(eb); actions.appendChild(db);
+   row.appendChild(actions);
+   groupElement.appendChild(row);
+   });
+   container.appendChild(groupElement);
+ });
+}
+
+// 将最近记录渲染为首页使用的紧凑两行样式
+// 输入参数：records，需要展示的最近记录数组；container，承载记录的页面元素
+// 返回结果：无，直接更新首页最近记录区域
+function renderRecentRecords(records,container){
+ container.innerHTML="";
+ if(!records.length){container.innerHTML="<div class='small'>暂无记录。</div>";return;}
+ records.forEach(item=>{
+   const classification=getRecordClassification(item);
+   const label=classification.subcategory?
+     classification.subcategory+" · "+classification.category:
+     classification.category+" · "+classification.type;
+   const row=document.createElement("div");
+   row.className="recentItem";
+   const amountClass=isIncomeCategory(classification.type)?"recentAmount income":"recentAmount";
+   row.innerHTML=`<div class="recentMain"><span class="recentLabel">${label}</span><span class="${amountClass}">${formatAmount(item.amount,classification.type)}</span></div><span class="recentTime">${formatRecordTime(item.time)}</span>`;
+   container.appendChild(row);
+ });
+}
+
+function render(){
+ renderMonthlySummary();
+ renderRecentRecords(getRecentRecords(ledger),document.getElementById("recentList"));
+ renderRecordList(ledger,document.getElementById("fullLedgerList"));
+}
+
+// 打开完整账本的全屏查看页面
+// 输入参数：无
+// 返回结果：无，显示完整账本页面
+function showFullLedger(){
+ document.getElementById("fullLedgerView").style.display="block";
+}
+
+// 关闭完整账本页面并返回首页
+// 输入参数：无
+// 返回结果：无，隐藏完整账本页面
+function hideFullLedger(){
+ document.getElementById("fullLedgerView").style.display="none";
+}
+
+document.getElementById("viewLedgerBtn").onclick=showFullLedger;
+document.getElementById("backToHome").onclick=hideFullLedger;
+
+function openEdit(id){
+ editingId=id;
+ const it=ledger.find(x=>x.id===id);
+ document.getElementById("eAmount").value=it.amount;
+ fillEditClassification(it);
+ document.getElementById("eNote").value=it.note||"";
+ document.getElementById("mask").style.display="block";
+}
+document.getElementById("cancelEdit").onclick=()=>mask.style.display="none";
+document.getElementById("saveEdit").onclick=()=>{
+ const it=ledger.find(x=>x.id===editingId);
+ it.amount=parseFloat(document.getElementById("eAmount").value)||0;
+ it.type=document.getElementById("eType").value;
+ it.category=document.getElementById("eCategory").value;
+ it.subcategory=it.type==="💸 支出"?document.getElementById("eSubcategory").value:"";
+ it.note=document.getElementById("eNote").value;
+ save(); render();
+ document.getElementById("ash").textContent="✓ 已修改";
+ mask.style.display="none";
+};
+document.getElementById("eType").onchange=event=>updateCategoryOptions(
+ event.target.value,
+ document.getElementById("eCategory"),
+ document.getElementById("eSubcategoryField"),
+ document.getElementById("eCategoryLabel"),
+ document.getElementById("eSubcategory")
+);
+document.getElementById("eCategory").onchange=event=>updateSubcategoryOptions(
+ event.target.value,
+ document.getElementById("eSubcategory")
+);
+let deletingId=null;
+function removeItem(id){
+ deletingId=id;
+ document.getElementById("deleteMask").style.display="block";
+}
+document.addEventListener("DOMContentLoaded",()=>{
+ document.getElementById("cancelDelete").onclick=()=>document.getElementById("deleteMask").style.display="none";
+ document.getElementById("confirmDelete").onclick=()=>{
+   ledger=ledger.filter(x=>x.id!==deletingId);
+   save(); render();
+   document.getElementById("ash").textContent="🤍 这一笔已经从我们的小账本里拿出来了。";
+   document.getElementById("deleteMask").style.display="none";
+ };
+});
+
+document.getElementById("saveBtn").onclick=()=>{
+ const amountInput=document.getElementById("amount");
+ const noteInput=document.getElementById("note");
+ const typeSelect=document.getElementById("type");
+ const categorySelect=document.getElementById("category");
+ const subcategorySelect=document.getElementById("subcategory");
+ const amount=amountInput.value.trim();
+ if(!amount)return;
+ ledger.push({
+   id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),
+   amount:parseFloat(amount),
+   type:typeSelect.value,
+   category:categorySelect.value,
+   subcategory:typeSelect.value==="💸 支出"?subcategorySelect.value:"",
+   note:noteInput.value.trim(),
+   time:new Date().toLocaleString()
+ });
+ document.getElementById("ash").textContent="📖 正在放进我们的小账本……";
+ save();
+ setTimeout(()=>{
+   render();
+   document.getElementById("ash").textContent=MSGS[Math.floor(Math.random()*MSGS.length)];
+   amountInput.value="";
+   noteInput.value="";
+ },400);
+};
+document.getElementById("type").onchange=event=>updateCategoryOptions(event.target.value);
+document.getElementById("category").onchange=event=>updateSubcategoryOptions(event.target.value);
+updateCategoryOptions(document.getElementById("type").value);
+render();
+</script>
+
+
+<div id="deleteMask" style="display:none;position:fixed;inset:0;background:#0006;z-index:1001">
+<div style="max-width:340px;margin:25vh auto;background:white;border-radius:18px;padding:18px;text-align:center">
+<h3>🗑️ 删除记录</h3>
+<p>确定把这一笔从我们的小账本里移除吗？</p>
+<div style="display:flex;gap:10px">
+<button id="cancelDelete">取消</button>
+<button id="confirmDelete">删除</button>
+</div>
+</div>
+</div>
+
+</body>
+</html>
