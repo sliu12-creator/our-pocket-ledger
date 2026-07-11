@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.0.2</title>
+<title>我们的小账本 v1.1.0</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -131,6 +131,16 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 .summaryLabel{display:block;margin-bottom:3px;font-size:13px;color:#7897a4}
 .summaryAmount{display:block;font-size:17px;font-weight:700;color:#2E6F92;white-space:nowrap}
 .summaryAmount.income{color:#4FAF72}
+.monthlyBudget{display:grid;gap:10px;margin:0 0 14px;padding:12px 13px;border:1px solid rgba(255,255,255,.72);border-radius:16px;background:rgba(237,249,245,.48);box-shadow:inset 0 1px 0 rgba(255,255,255,.68)}
+.budgetHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.budgetTitle{font-size:15px;font-weight:650;color:#416879}
+.budgetSettings{width:auto;padding:7px 9px;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:13px}
+.budgetGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 14px}
+.budgetLabel{display:block;margin-bottom:3px;font-size:13px;color:#7897a4}
+.budgetValue{display:block;font-size:16px;font-weight:700;color:#2E6F92;white-space:nowrap}
+.budgetValue.remaining{color:#4FAF72}
+.budgetValue.over{color:#b66d73}
+.budgetHint{font-size:13px;color:#678;line-height:1.4}
 .recentSection{margin:0 0 14px}
 .recentSection h3{margin-bottom:8px;font-size:17px}
 .recentList{display:grid;gap:8px}
@@ -187,6 +197,8 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 .calendarDay.empty{background:transparent;box-shadow:none;pointer-events:none}
 .calendarDay.hasRecords{background:rgba(224,244,247,.72);color:#416879;border:1px solid rgba(255,255,255,.76)}
 .calendarDay.selected{background:rgba(143,202,214,.32);color:#244a5d}
+.calendarDay.withinBudget{background:rgba(226,243,233,.78);color:#3f765a}
+.calendarDay.overBudget{background:rgba(249,231,233,.82);color:#9b6169}
 .calendarDay.hasRecords .calendarDayNumber{font-weight:760}
 .calendarDayNumber{font-size:14px;font-weight:650}
 .calendarDot{width:4px;height:4px;border-radius:50%;background:#6daebe}
@@ -213,8 +225,8 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 .pickerYearChoices button.selected,.pickerMonthChoices button.selected{background:rgba(143,202,214,.36);color:#244a5d}
 .pickerYearChoices button.current{border:1px solid rgba(106,174,190,.46)}
 .recordDateInput{height:48px;padding:13px 14px;border-radius:16px;font-size:16px;line-height:normal;appearance:none;-webkit-appearance:none}
-#mask,#deleteMask{z-index:1200!important;padding:0 18px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-#mask>div,#deleteMask>div{
+#mask,#deleteMask,#budgetMask{z-index:1200!important;padding:0 18px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#mask>div,#deleteMask>div,#budgetMask>div{
 background:rgba(255,255,255,.78)!important;
 border:1px solid rgba(255,255,255,.82);
 box-shadow:0 22px 48px rgba(49,86,103,.22);
@@ -231,6 +243,7 @@ backdrop-filter:blur(18px) saturate(135%);
 .item{padding-right:82px}
 h2{font-size:23px}
 .summaryAmount{font-size:16px}
+.budgetValue{font-size:15px}
 .recentItem{padding:10px 12px}
 .recentAmount{font-size:16px}
 .fullLedgerView{padding-left:14px;padding-right:14px}
@@ -247,7 +260,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.0.2</h2>
+<h2>我们的小账本 · v1.1.0</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -257,6 +270,17 @@ h2{font-size:23px}
 <div class="summaryItem"><span class="summaryLabel">支出</span><strong class="summaryAmount" id="monthlyExpense">- ¥0</strong></div>
 <div class="summaryItem"><span class="summaryLabel">结余</span><strong class="summaryAmount" id="monthlyBalance">¥0</strong></div>
 </div>
+</div>
+
+<div class="monthlyBudget">
+<div class="budgetHeader"><span class="budgetTitle">🌱 本月预算</span><button class="budgetSettings" id="openBudgetSettings">⚙️ 设置本月预算</button></div>
+<div class="budgetGrid">
+<div><span class="budgetLabel">预算</span><strong class="budgetValue" id="budgetAmountValue">暂未设置</strong></div>
+<div><span class="budgetLabel">已花</span><strong class="budgetValue" id="budgetSpentValue">--</strong></div>
+<div><span class="budgetLabel">剩余</span><strong class="budgetValue" id="budgetRemainingValue">--</strong></div>
+<div><span class="budgetLabel">每日建议</span><strong class="budgetValue" id="budgetDailyValue">--</strong></div>
+</div>
+<div class="budgetHint" id="budgetHint"></div>
 </div>
 
 <div class="recentSection">
@@ -339,15 +363,27 @@ h2{font-size:23px}
 </div>
 </div>
 
+<div id="budgetMask" style="display:none;position:fixed;inset:0;background:#0005">
+<div style="max-width:340px;margin:25vh auto;background:#fff;padding:18px;border-radius:18px">
+<h3>设置本月预算</h3>
+<p class="small">本月最多花多少钱？</p>
+<input id="budgetInput" type="number" inputmode="decimal" step="0.01" min="0" placeholder="金额">
+<button id="saveBudgetBtn">保存预算</button>
+<button id="cancelBudgetBtn">取消</button>
+</div>
+</div>
+
 
 <script>
 const KEY="ourLedger_v032";
+const BUDGET_KEY="ourLedger_budget";
 const MSGS=[
 "收到啦，这一笔我帮宝宝收好了。🤍",
 "今天也一起认真生活。😽",
 "谢谢你继续和我一起记录今天。"
 ];
 let ledger=JSON.parse(localStorage.getItem(KEY)||"[]");
+let budgets=loadBudgets();
 let editingId=null;
 let calendarMonthDate=new Date(new Date().getFullYear(),new Date().getMonth(),1);
 let selectedCalendarDate=formatCalendarDateKey(new Date());
@@ -601,6 +637,8 @@ function renderCalendarMonth(){
  const monthTitle=document.getElementById("calendarMonthTitle");
  const year=calendarMonthDate.getFullYear();
  const month=calendarMonthDate.getMonth();
+ const now=new Date();
+ const calendarBudgetStatus=year===now.getFullYear()&&month===now.getMonth()?calculateMonthlyBudgetStatus():{hasBudget:false};
  const firstDay=new Date(year,month,1).getDay();
  const daysInMonth=new Date(year,month+1,0).getDate();
  const recordDates=new Set(ledger.map(record=>formatCalendarDateKey(parseRecordTime(record.time))));
@@ -613,10 +651,11 @@ function renderCalendarMonth(){
  }
  for(let day=1;day<=daysInMonth;day++){
    const dateKey=formatCalendarDateKey(new Date(year,month,day));
+   const hasRecords=recordDates.has(dateKey);
    const dayButton=document.createElement("button");
    dayButton.type="button";
-   dayButton.className="calendarDay"+(recordDates.has(dateKey)?" hasRecords":"")+(dateKey===selectedCalendarDate?" selected":"");
-   dayButton.innerHTML=`<span class="calendarDayNumber">${day}</span>${recordDates.has(dateKey)?"<span class='calendarDot'></span>":""}`;
+   dayButton.className="calendarDay"+(hasRecords?" hasRecords":"")+(hasRecords?getCalendarBudgetClass(dateKey,calendarBudgetStatus):"")+(dateKey===selectedCalendarDate?" selected":"");
+   dayButton.innerHTML=`<span class="calendarDayNumber">${day}</span>${hasRecords?"<span class='calendarDot'></span>":""}`;
    dayButton.onclick=()=>{
      selectedCalendarDate=dateKey;
      renderCalendar();
@@ -804,6 +843,125 @@ function calculateMonthlySummary(){
  return monthlySummary;
 }
 
+// 读取所有已保存的月度预算，兼容早期单条预算对象
+// 输入参数：无，从 LocalStorage 读取预算数据
+// 返回结果：包含 { year, month, amount } 的预算数组
+function loadBudgets(){
+ try{
+   const storedBudget=JSON.parse(localStorage.getItem(BUDGET_KEY)||"[]");
+   if(Array.isArray(storedBudget))return storedBudget;
+   return storedBudget&&typeof storedBudget==="object"?[storedBudget]:[];
+ }catch(error){
+   return [];
+ }
+}
+
+// 保存所有月度预算到独立的 LocalStorage key
+// 输入参数：无，使用当前 budgets 数组
+// 返回结果：无，直接更新 LocalStorage 中的预算数据
+function saveBudgets(){
+ localStorage.setItem(BUDGET_KEY,JSON.stringify(budgets));
+}
+
+// 获取指定年月的预算记录
+// 输入参数：year，年份；month，1 到 12 的月份
+// 返回结果：对应月份的预算对象，未设置时返回 undefined
+function getBudgetForMonth(year,month){
+ return budgets.find(budget=>Number(budget.year)===year&&Number(budget.month)===month);
+}
+
+// 格式化预算金额，整数不显示小数并保留负数状态
+// 输入参数：amount，需要显示的预算金额
+// 返回结果：用于预算卡片展示的金额字符串
+function formatBudgetAmount(amount){
+ const value=Number(amount)||0;
+ const displayValue=Number.isInteger(Math.abs(value))?Math.abs(value):Math.abs(value).toFixed(2);
+ return (value<0?"- ¥":"¥")+displayValue;
+}
+
+// 计算当前自然月预算的支出、剩余金额与每日建议额度
+// 输入参数：无，使用当前系统日期、当前月预算与账本记录
+// 返回结果：包含预算状态和计算结果的对象
+function calculateMonthlyBudgetStatus(){
+ const now=new Date();
+ const year=now.getFullYear();
+ const month=now.getMonth()+1;
+ const budget=getBudgetForMonth(year,month);
+ if(!budget)return {hasBudget:false,year:year,month:month};
+ const spent=calculateMonthlySummary().expense;
+ const remaining=Number(budget.amount)-spent;
+ const daysInMonth=new Date(year,month,0).getDate();
+ const remainingDays=daysInMonth-now.getDate()+1;
+ return {
+   hasBudget:true,
+   year:year,
+   month:month,
+   amount:Number(budget.amount),
+   spent:spent,
+   remaining:remaining,
+   dailySuggestion:remaining/remainingDays
+ };
+}
+
+// 返回与预算状态对应的温暖提示文字
+// 输入参数：budgetStatus，由 calculateMonthlyBudgetStatus 返回的预算状态
+// 返回结果：预算卡片中展示的提示文字
+function getBudgetHint(budgetStatus){
+ if(!budgetStatus.hasBudget)return "设置一个小目标，从今天开始慢慢来。";
+ if(budgetStatus.remaining<0)return "这个月需要稍微收一收啦。";
+ if(budgetStatus.spent/budgetStatus.amount>=0.8)return "最近花销稍微靠近计划啦 🌱";
+ return "今天也可以安心生活 🤍";
+}
+
+// 渲染首页本月预算卡片中的金额和状态提示
+// 输入参数：无，使用当前月预算状态
+// 返回结果：无，直接更新预算卡片内容
+function renderBudget(){
+ const budgetStatus=calculateMonthlyBudgetStatus();
+ const budgetAmountElement=document.getElementById("budgetAmountValue");
+ const spentElement=document.getElementById("budgetSpentValue");
+ const remainingElement=document.getElementById("budgetRemainingValue");
+ const dailyElement=document.getElementById("budgetDailyValue");
+ if(!budgetStatus.hasBudget){
+   budgetAmountElement.textContent="暂未设置预算";
+   spentElement.textContent="--";
+   remainingElement.textContent="--";
+   dailyElement.textContent="--";
+   remainingElement.className="budgetValue";
+ }else{
+   budgetAmountElement.textContent=formatBudgetAmount(budgetStatus.amount);
+   spentElement.textContent=formatBudgetAmount(budgetStatus.spent);
+   remainingElement.textContent=formatBudgetAmount(budgetStatus.remaining);
+   dailyElement.textContent=formatBudgetAmount(budgetStatus.dailySuggestion);
+   remainingElement.className="budgetValue "+(budgetStatus.remaining<0?"over":"remaining");
+ }
+ document.getElementById("budgetHint").textContent=getBudgetHint(budgetStatus);
+}
+
+// 保存当前自然月的预算金额，存在时更新，不存在时新增
+// 输入参数：amount，需要保存的预算金额
+// 返回结果：无，更新 budgets 数组并保存到 LocalStorage
+function saveCurrentMonthBudget(amount){
+ const now=new Date();
+ const year=now.getFullYear();
+ const month=now.getMonth()+1;
+ const existingBudget=getBudgetForMonth(year,month);
+ if(existingBudget)existingBudget.amount=amount;
+ else budgets.push({year:year,month:month,amount:amount});
+ saveBudgets();
+}
+
+// 根据当前预算的每日建议额度返回日历日期状态类
+// 输入参数：dateKey，YYYY-MM-DD 日期键；budgetStatus，当前月预算状态
+// 返回结果：日历日期使用的预算状态 class，未设置预算时返回空字符串
+function getCalendarBudgetClass(dateKey,budgetStatus){
+ if(!budgetStatus.hasBudget)return "";
+ const dayRecords=getRecordsForCalendarDate(ledger,dateKey);
+ const dayExpense=calculateRecordSummary(dayRecords).expense;
+ if(dayExpense===0)return " withinBudget";
+ return dayExpense>budgetStatus.dailySuggestion?" overBudget":" withinBudget";
+}
+
 // 将结余格式化为带正负号的金额，零结余不显示正负号
 // 输入参数：balance，本月收入减支出的结余数值
 // 返回结果：用于本月小结展示的结余金额字符串
@@ -885,6 +1043,7 @@ function renderRecentRecords(records,container){
 
 function render(){
  renderMonthlySummary();
+ renderBudget();
  renderRecentRecords(getRecentRecords(ledger),document.getElementById("recentList"));
  renderRecordList(ledger,document.getElementById("fullLedgerList"));
  renderCalendar();
@@ -919,6 +1078,35 @@ function hideCalendar(){
  document.getElementById("fullCalendarView").style.display="none";
 }
 
+// 打开本月预算设置弹窗，并回填已保存的预算金额
+// 输入参数：无
+// 返回结果：无，显示预算设置弹窗
+function openBudgetSettings(){
+ const budgetStatus=calculateMonthlyBudgetStatus();
+ document.getElementById("budgetInput").value=budgetStatus.hasBudget?budgetStatus.amount:"";
+ document.getElementById("budgetMask").style.display="block";
+}
+
+// 关闭本月预算设置弹窗
+// 输入参数：无
+// 返回结果：无，隐藏预算设置弹窗
+function hideBudgetSettings(){
+ document.getElementById("budgetMask").style.display="none";
+}
+
+// 校验并保存本月预算设置，然后刷新预算和日历状态
+// 输入参数：无，读取预算金额输入框内容
+// 返回结果：无，保存有效预算并更新页面
+function saveBudgetSettings(){
+ const budgetInput=document.getElementById("budgetInput");
+ const amountText=budgetInput.value.trim();
+ const amount=Number(amountText);
+ if(!amountText||!Number.isFinite(amount)||amount<0)return;
+ saveCurrentMonthBudget(amount);
+ render();
+ hideBudgetSettings();
+}
+
 document.getElementById("viewLedgerBtn").onclick=showFullLedger;
 document.getElementById("backToHome").onclick=hideFullLedger;
 document.getElementById("viewCalendarBtn").onclick=showCalendar;
@@ -930,6 +1118,9 @@ document.getElementById("calendarTodayBtn").onclick=goToToday;
 document.getElementById("closeCalendarPicker").onclick=hideCalendarPicker;
 document.getElementById("previousPickerYear").onclick=()=>changeCalendarPickerYear(-1);
 document.getElementById("nextPickerYear").onclick=()=>changeCalendarPickerYear(1);
+document.getElementById("openBudgetSettings").onclick=openBudgetSettings;
+document.getElementById("cancelBudgetBtn").onclick=hideBudgetSettings;
+document.getElementById("saveBudgetBtn").onclick=saveBudgetSettings;
 
 function openEdit(id){
  editingId=id;
