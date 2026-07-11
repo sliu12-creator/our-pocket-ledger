@@ -212,6 +212,7 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 .pickerYearChoices button,.pickerMonthChoices button{padding:10px 6px;border-radius:12px;background:rgba(240,250,252,.62);color:#416879;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
 .pickerYearChoices button.selected,.pickerMonthChoices button.selected{background:rgba(143,202,214,.36);color:#244a5d}
 .pickerYearChoices button.current{border:1px solid rgba(106,174,190,.46)}
+.recordDateInput{height:48px;padding:13px 14px;border-radius:16px;font-size:16px;line-height:normal;appearance:none;-webkit-appearance:none}
 #mask,#deleteMask{z-index:1200!important;padding:0 18px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 #mask>div,#deleteMask>div{
 background:rgba(255,255,255,.78)!important;
@@ -270,7 +271,7 @@ h2{font-size:23px}
 <input id="amount" inputmode="decimal">
 
 <label>📅 日期</label>
-<input id="recordDate" type="date">
+<input class="recordDateInput" id="recordDate" type="date">
 
 <label>这笔钱是？</label>
 <select id="type">
