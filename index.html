@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v0.9.1</title>
+<title>我们的小账本 v0.9.2</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -189,7 +190,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v0.9.1</h2>
+<h2>我们的小账本 · v0.9.2</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -270,6 +271,7 @@ document.body.insertAdjacentHTML("beforeend",`
 <div id="mask" style="display:none;position:fixed;inset:0;background:#0005">
 <div style="max-width:360px;margin:8vh auto;background:#fff;padding:18px;border-radius:18px;max-height:84vh;overflow-y:auto">
 <h3>编辑这一笔</h3>
+<label>日期</label><input id="eDate" type="date" style="width:100%">
 <label>金额</label><input id="eAmount" type="number" step="0.01" style="width:100%">
 <label>这笔钱是？</label>
 <select id="eType" style="width:100%"><option>💰 收入</option><option>💸 支出</option></select>
@@ -412,6 +414,24 @@ function parseRecordTime(time){
  }
  const recordDate=new Date(timeText);
  return Number.isNaN(recordDate.getTime())?new Date():recordDate;
+}
+
+// 将记录时间转换为原生日期输入框需要的 YYYY-MM-DD 格式
+// 输入参数：time，记录中的时间字符串
+// 返回结果：可直接填入 type="date" 输入框的日期字符串
+function formatDateInput(time){
+ const recordDate=parseRecordTime(time);
+ return recordDate.getFullYear()+"-"+String(recordDate.getMonth()+1).padStart(2,"0")+"-"+String(recordDate.getDate()).padStart(2,"0");
+}
+
+// 更新记录日期并保留原有的时分秒，维持 time 字段为字符串
+// 输入参数：time，原记录时间字符串；dateValue，YYYY-MM-DD 格式的新日期
+// 返回结果：包含新日期和原时间的时间字符串
+function updateRecordDate(time,dateValue){
+ const dateParts=dateValue.split("-").map(Number);
+ const recordDate=parseRecordTime(time);
+ recordDate.setFullYear(dateParts[0],dateParts[1]-1,dateParts[2]);
+ return recordDate.toLocaleString();
 }
 
 // 将时间格式化为：20:36 / 昨天 20:36 / 7 月 3 日 / 2025/12/18
@@ -599,6 +619,7 @@ document.getElementById("backToHome").onclick=hideFullLedger;
 function openEdit(id){
  editingId=id;
  const it=ledger.find(x=>x.id===id);
+ document.getElementById("eDate").value=formatDateInput(it.time);
  document.getElementById("eAmount").value=it.amount;
  fillEditClassification(it);
  document.getElementById("eNote").value=it.note||"";
@@ -607,11 +628,13 @@ function openEdit(id){
 document.getElementById("cancelEdit").onclick=()=>mask.style.display="none";
 document.getElementById("saveEdit").onclick=()=>{
  const it=ledger.find(x=>x.id===editingId);
+ const editedDate=document.getElementById("eDate").value;
  it.amount=parseFloat(document.getElementById("eAmount").value)||0;
  it.type=document.getElementById("eType").value;
  it.category=document.getElementById("eCategory").value;
  it.subcategory=it.type==="💸 支出"?document.getElementById("eSubcategory").value:"";
  it.note=document.getElementById("eNote").value;
+ if(editedDate)it.time=updateRecordDate(it.time,editedDate);
  save(); render();
  document.getElementById("ash").textContent="✓ 已修改";
  mask.style.display="none";
