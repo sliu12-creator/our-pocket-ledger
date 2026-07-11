@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v0.9.3</title>
+<title>我们的小账本 v1.0.0</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -163,6 +163,39 @@ linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
 .fullLedgerHeader h2{margin:0;font-size:22px}
 .backBtn{width:auto;padding:9px 12px;border-radius:999px;background:rgba(255,255,255,.68);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
 .fullLedgerList{display:grid;gap:16px;max-width:760px;margin:0 auto}
+.calendarContent{display:grid;gap:16px;max-width:760px;margin:0 auto}
+.calendarToolbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.calendarToolbar button{width:auto;padding:9px 11px;background:rgba(255,255,255,.68);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
+.calendarMonthTitle{font-size:17px;font-weight:700;color:#416879;white-space:nowrap}
+.calendarWeekdays,.calendarGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.calendarWeekdays span{text-align:center;font-size:12px;color:#7897a4}
+.calendarDay{
+display:grid;
+place-items:center;
+align-content:center;
+gap:2px;
+min-width:0;
+aspect-ratio:1;
+padding:4px;
+border-radius:12px;
+background:rgba(255,255,255,.44);
+color:#416879;
+box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
+}
+.calendarDay.empty{background:transparent;box-shadow:none;pointer-events:none}
+.calendarDay.selected{background:rgba(143,202,214,.32);color:#244a5d}
+.calendarDayNumber{font-size:14px;font-weight:650}
+.calendarDot{width:4px;height:4px;border-radius:50%;background:#6daebe}
+.calendarDaySummary{padding:14px;border:1px solid rgba(255,255,255,.72);border-radius:16px;background:rgba(255,255,255,.46)}
+.calendarDaySummary h3{margin-bottom:10px;font-size:17px}
+.dailySummary{display:flex;gap:14px;margin-bottom:12px;font-size:13px;color:#7897a4}
+.dailySummary strong{display:block;margin-top:3px;font-size:15px;color:#2E6F92}
+.dailySummary .income{color:#4FAF72}
+.calendarDayList{display:grid;gap:8px}
+.calendarRecord{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid rgba(137,174,187,.2)}
+.calendarRecordLabel{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;color:#416879}
+.calendarRecordAmount{flex:0 0 auto;font-size:15px;font-weight:700;color:#2E6F92;white-space:nowrap}
+.calendarRecordAmount.income{color:#4FAF72}
 #mask,#deleteMask{z-index:1200!important;padding:0 18px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 #mask>div,#deleteMask>div{
 background:rgba(255,255,255,.78)!important;
@@ -185,13 +218,17 @@ h2{font-size:23px}
 .recentAmount{font-size:16px}
 .fullLedgerView{padding-left:14px;padding-right:14px}
 .fullLedgerHeader h2{font-size:20px}
+.calendarWeekdays,.calendarGrid{gap:3px}
+.calendarDay{border-radius:10px}
+.calendarToolbar button{padding:8px 9px;font-size:14px}
+.calendarMonthTitle{font-size:16px}
 }
 </style>
 </head>
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v0.9.3</h2>
+<h2>我们的小账本 · v1.0.0</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -209,6 +246,7 @@ h2{font-size:23px}
 </div>
 
 <button class="viewLedgerBtn" id="viewLedgerBtn">📖 查看完整账本</button>
+<button class="viewLedgerBtn" id="viewCalendarBtn">📅 查看日历</button>
 
 <label>金额</label>
 <input id="amount" inputmode="decimal">
@@ -242,7 +280,29 @@ h2{font-size:23px}
 <button class="backBtn" id="backToHome">← 返回</button>
 <h2>📖 完整账本</h2>
 </div>
+
 <div class="fullLedgerList" id="fullLedgerList"></div>
+</div>
+
+<div class="fullLedgerView" id="fullCalendarView" style="display:none">
+<div class="fullLedgerHeader">
+<button class="backBtn" id="backFromCalendar">← 返回</button>
+<h2>📅 日历</h2>
+</div>
+<div class="calendarContent">
+<div class="calendarToolbar">
+<button id="previousMonthBtn">‹ 上个月</button>
+<div class="calendarMonthTitle" id="calendarMonthTitle"></div>
+<button id="nextMonthBtn">下个月 ›</button>
+</div>
+<div class="calendarWeekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+<div class="calendarGrid" id="calendarGrid"></div>
+<div class="calendarDaySummary">
+<h3 id="calendarSelectedDate"></h3>
+<div class="dailySummary" id="dailySummary"></div>
+<div class="calendarDayList" id="calendarDayList"></div>
+</div>
+</div>
 </div>
 
 
@@ -255,6 +315,8 @@ const MSGS=[
 ];
 let ledger=JSON.parse(localStorage.getItem(KEY)||"[]");
 let editingId=null;
+let calendarMonthDate=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+let selectedCalendarDate=formatCalendarDateKey(new Date());
 const INCOME_CATEGORIES=["💼 工资","🧑‍💻 兼职","🧧 红包","↩️ 退款","📈 投资","♻️ 出二手","💰 其它"];
 const EXPENSE_CATEGORIES={
  "🍜 吃饭":["🌅 早餐","🍱 中餐","🍽️ 晚餐","🍪 零食","🥬 买菜","🍎 水果","🌙 夜宵","🍜 其它"],
@@ -459,6 +521,115 @@ function formatRecordTime(time){
  return recordDate.getFullYear()+"/"+String(recordDate.getMonth()+1).padStart(2,"0")+"/"+String(recordDate.getDate()).padStart(2,"0");
 }
 
+// 将 Date 对象格式化为日历比较使用的 YYYY-MM-DD 日期键
+// 输入参数：date，需要格式化的 Date 对象
+// 返回结果：用于日历标记和当天记录筛选的日期字符串
+function formatCalendarDateKey(date){
+ return date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+String(date.getDate()).padStart(2,"0");
+}
+
+// 获取指定日期的记录，并保持从新到旧的顺序
+// 输入参数：records，账本记录数组；dateKey，YYYY-MM-DD 格式的日期键
+// 返回结果：指定日期的记录数组
+function getRecordsForCalendarDate(records,dateKey){
+ return sortRecordsByNewest(records.filter(record=>formatCalendarDateKey(parseRecordTime(record.time))===dateKey));
+}
+
+// 计算指定记录集合的收入、支出与结余
+// 输入参数：records，需要汇总的账本记录数组
+// 返回结果：包含 income、expense、balance 的汇总对象
+function calculateRecordSummary(records){
+ const summary={income:0,expense:0,balance:0};
+ records.forEach(record=>{
+   const amount=Number(record.amount)||0;
+   if(isIncomeCategory(getRecordClassification(record).type))summary.income+=amount;
+   else summary.expense+=amount;
+ });
+ summary.balance=summary.income-summary.expense;
+ return summary;
+}
+
+// 将日期键格式化为日历当天记录区域的标题
+// 输入参数：dateKey，YYYY-MM-DD 格式的日期键
+// 返回结果：例如“📅 2026年7月11日”的标题文字
+function formatCalendarDateTitle(dateKey){
+ const dateParts=dateKey.split("-").map(Number);
+ return "📅 "+dateParts[0]+"年"+dateParts[1]+"月"+dateParts[2]+"日";
+}
+
+// 渲染当前查看月份的星期标题、日期网格与账单标记
+// 输入参数：无，使用当前 calendarMonthDate、selectedCalendarDate 和 ledger 数据
+// 返回结果：无，直接更新日历日期网格
+function renderCalendarMonth(){
+ const calendarGrid=document.getElementById("calendarGrid");
+ const monthTitle=document.getElementById("calendarMonthTitle");
+ const year=calendarMonthDate.getFullYear();
+ const month=calendarMonthDate.getMonth();
+ const firstDay=new Date(year,month,1).getDay();
+ const daysInMonth=new Date(year,month+1,0).getDate();
+ const recordDates=new Set(ledger.map(record=>formatCalendarDateKey(parseRecordTime(record.time))));
+ monthTitle.textContent=year+"年"+(month+1)+"月";
+ calendarGrid.innerHTML="";
+ for(let dayIndex=0;dayIndex<firstDay;dayIndex++){
+   const emptyDay=document.createElement("div");
+   emptyDay.className="calendarDay empty";
+   calendarGrid.appendChild(emptyDay);
+ }
+ for(let day=1;day<=daysInMonth;day++){
+   const dateKey=formatCalendarDateKey(new Date(year,month,day));
+   const dayButton=document.createElement("button");
+   dayButton.type="button";
+   dayButton.className="calendarDay"+(dateKey===selectedCalendarDate?" selected":"");
+   dayButton.innerHTML=`<span class="calendarDayNumber">${day}</span>${recordDates.has(dateKey)?"<span class='calendarDot'></span>":""}`;
+   dayButton.onclick=()=>{
+     selectedCalendarDate=dateKey;
+     renderCalendar();
+   };
+   calendarGrid.appendChild(dayButton);
+ }
+}
+
+// 渲染已选日期的当天小结和记录列表
+// 输入参数：无，使用当前 selectedCalendarDate 和 ledger 数据
+// 返回结果：无，直接更新当天记录区域
+function renderCalendarDayDetails(){
+ const dayRecords=getRecordsForCalendarDate(ledger,selectedCalendarDate);
+ const daySummary=calculateRecordSummary(dayRecords);
+ const dailySummary=document.getElementById("dailySummary");
+ const dayList=document.getElementById("calendarDayList");
+ const balanceClass=daySummary.balance>0?" income":"";
+ document.getElementById("calendarSelectedDate").textContent=formatCalendarDateTitle(selectedCalendarDate);
+ dailySummary.innerHTML=`<span>收入<strong class="income">${formatAmount(daySummary.income,"💰 收入")}</strong></span><span>支出<strong>${formatAmount(daySummary.expense,"💸 支出")}</strong></span><span>结余<strong class="${balanceClass.trim()}">${formatBalanceAmount(daySummary.balance)}</strong></span>`;
+ dayList.innerHTML="";
+ if(!dayRecords.length){dayList.innerHTML="<div class='small'>暂无记录。</div>";return;}
+ dayRecords.forEach(record=>{
+   const classification=getRecordClassification(record);
+   const label=classification.subcategory?classification.subcategory+" · "+classification.category:classification.category;
+   const row=document.createElement("div");
+   const amountClass=isIncomeCategory(classification.type)?"calendarRecordAmount income":"calendarRecordAmount";
+   row.className="calendarRecord";
+   row.innerHTML=`<span class="calendarRecordLabel">${label}</span><span class="${amountClass}">${formatAmount(record.amount,classification.type)}</span>`;
+   dayList.appendChild(row);
+ });
+}
+
+// 渲染当前月份的日历与已选日期详情
+// 输入参数：无，使用日历当前状态和 ledger 数据
+// 返回结果：无，更新整个日历查看区域
+function renderCalendar(){
+ renderCalendarMonth();
+ renderCalendarDayDetails();
+}
+
+// 切换日历查看月份并默认选中目标月第一天
+// 输入参数：monthOffset，月份偏移量，-1 为上月，1 为下月
+// 返回结果：无，更新日历月份和当天记录区域
+function changeCalendarMonth(monthOffset){
+ calendarMonthDate=new Date(calendarMonthDate.getFullYear(),calendarMonthDate.getMonth()+monthOffset,1);
+ selectedCalendarDate=formatCalendarDateKey(calendarMonthDate);
+ renderCalendar();
+}
+
 // 将记录时间格式化为分组标题：今天 / 昨天 / 7 月 3 日 / 2025/12/18
 // 输入参数：time，记录中的时间字符串
 // 返回结果：用于账本分组标题的文字
@@ -605,6 +776,7 @@ function render(){
  renderMonthlySummary();
  renderRecentRecords(getRecentRecords(ledger),document.getElementById("recentList"));
  renderRecordList(ledger,document.getElementById("fullLedgerList"));
+ renderCalendar();
 }
 
 // 打开完整账本的全屏查看页面
@@ -621,8 +793,27 @@ function hideFullLedger(){
  document.getElementById("fullLedgerView").style.display="none";
 }
 
+// 打开日历全屏查看页面并刷新当前月份数据
+// 输入参数：无
+// 返回结果：无，显示日历页面
+function showCalendar(){
+ document.getElementById("fullCalendarView").style.display="block";
+ renderCalendar();
+}
+
+// 关闭日历全屏页面并返回首页
+// 输入参数：无
+// 返回结果：无，隐藏日历页面
+function hideCalendar(){
+ document.getElementById("fullCalendarView").style.display="none";
+}
+
 document.getElementById("viewLedgerBtn").onclick=showFullLedger;
 document.getElementById("backToHome").onclick=hideFullLedger;
+document.getElementById("viewCalendarBtn").onclick=showCalendar;
+document.getElementById("backFromCalendar").onclick=hideCalendar;
+document.getElementById("previousMonthBtn").onclick=()=>changeCalendarMonth(-1);
+document.getElementById("nextMonthBtn").onclick=()=>changeCalendarMonth(1);
 
 function openEdit(id){
  editingId=id;
