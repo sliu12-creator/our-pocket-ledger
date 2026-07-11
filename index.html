@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.0.1</title>
+<title>我们的小账本 v1.0.2</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -180,12 +180,14 @@ min-width:0;
 aspect-ratio:1;
 padding:4px;
 border-radius:12px;
-background:rgba(255,255,255,.44);
-color:#416879;
+background:rgba(255,255,255,.2);
+color:#7897a4;
 box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 }
 .calendarDay.empty{background:transparent;box-shadow:none;pointer-events:none}
+.calendarDay.hasRecords{background:rgba(224,244,247,.72);color:#416879;border:1px solid rgba(255,255,255,.76)}
 .calendarDay.selected{background:rgba(143,202,214,.32);color:#244a5d}
+.calendarDay.hasRecords .calendarDayNumber{font-weight:760}
 .calendarDayNumber{font-size:14px;font-weight:650}
 .calendarDot{width:4px;height:4px;border-radius:50%;background:#6daebe}
 .calendarDaySummary{padding:14px;border:1px solid rgba(255,255,255,.72);border-radius:16px;background:rgba(255,255,255,.46)}
@@ -209,6 +211,7 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 .pickerMonthChoices{margin-top:14px}
 .pickerYearChoices button,.pickerMonthChoices button{padding:10px 6px;border-radius:12px;background:rgba(240,250,252,.62);color:#416879;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
 .pickerYearChoices button.selected,.pickerMonthChoices button.selected{background:rgba(143,202,214,.36);color:#244a5d}
+.pickerYearChoices button.current{border:1px solid rgba(106,174,190,.46)}
 #mask,#deleteMask{z-index:1200!important;padding:0 18px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 #mask>div,#deleteMask>div{
 background:rgba(255,255,255,.78)!important;
@@ -243,7 +246,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.0.1</h2>
+<h2>我们的小账本 · v1.0.2</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -265,6 +268,9 @@ h2{font-size:23px}
 
 <label>金额</label>
 <input id="amount" inputmode="decimal">
+
+<label>📅 日期</label>
+<input id="recordDate" type="date">
 
 <label>这笔钱是？</label>
 <select id="type">
@@ -345,6 +351,7 @@ let editingId=null;
 let calendarMonthDate=new Date(new Date().getFullYear(),new Date().getMonth(),1);
 let selectedCalendarDate=formatCalendarDateKey(new Date());
 let calendarPickerYear=calendarMonthDate.getFullYear();
+let calendarPickerStartYear=calendarPickerYear-2;
 const INCOME_CATEGORIES=["💼 工资","🧑‍💻 兼职","🧧 红包","↩️ 退款","📈 投资","♻️ 出二手","💰 其它"];
 const EXPENSE_CATEGORIES={
  "🍜 吃饭":["🌅 早餐","🍱 中餐","🍽️ 晚餐","🍪 零食","🥬 买菜","🍎 水果","🌙 夜宵","🍜 其它"],
@@ -607,7 +614,7 @@ function renderCalendarMonth(){
    const dateKey=formatCalendarDateKey(new Date(year,month,day));
    const dayButton=document.createElement("button");
    dayButton.type="button";
-   dayButton.className="calendarDay"+(dateKey===selectedCalendarDate?" selected":"");
+   dayButton.className="calendarDay"+(recordDates.has(dateKey)?" hasRecords":"")+(dateKey===selectedCalendarDate?" selected":"");
    dayButton.innerHTML=`<span class="calendarDayNumber">${day}</span>${recordDates.has(dateKey)?"<span class='calendarDot'></span>":""}`;
    dayButton.onclick=()=>{
      selectedCalendarDate=dateKey;
@@ -657,20 +664,21 @@ function changeCalendarMonth(monthOffset){
  renderCalendar();
 }
 
-// 渲染年月选择层中的年份和月份选项
-// 输入参数：无，使用当前 calendarPickerYear 和 calendarMonthDate 状态
+// 渲染年月选择层中的六年网格和月份选项
+// 输入参数：无，使用当前 calendarPickerYear、calendarPickerStartYear 和 calendarMonthDate 状态
 // 返回结果：无，直接更新年份与月份选择区域
 function renderCalendarPicker(){
  const yearChoices=document.getElementById("calendarYearChoices");
  const monthChoices=document.getElementById("calendarMonthChoices");
- document.getElementById("calendarPickerYearLabel").textContent=calendarPickerYear+"年";
+ const currentYear=new Date().getFullYear();
+ document.getElementById("calendarPickerYearLabel").textContent=calendarPickerStartYear+" - "+(calendarPickerStartYear+5);
  yearChoices.innerHTML="";
  monthChoices.innerHTML="";
- for(let year=calendarPickerYear-1;year<=calendarPickerYear+1;year++){
+ for(let year=calendarPickerStartYear;year<calendarPickerStartYear+6;year++){
    const yearButton=document.createElement("button");
    yearButton.type="button";
    yearButton.textContent=year;
-   yearButton.className=year===calendarPickerYear?"selected":"";
+   yearButton.className=(year===calendarPickerYear?"selected ":"")+(year===currentYear?"current":"");
    yearButton.onclick=()=>{
      calendarPickerYear=year;
      renderCalendarPicker();
@@ -687,11 +695,12 @@ function renderCalendarPicker(){
  }
 }
 
-// 打开年月快速选择层，并以当前查看年份作为初始选项
+// 打开年月快速选择层，并以当前查看年份附近的六年区间作为初始选项
 // 输入参数：无
 // 返回结果：无，显示年月选择层
 function showCalendarPicker(){
  calendarPickerYear=calendarMonthDate.getFullYear();
+ calendarPickerStartYear=calendarPickerYear-2;
  renderCalendarPicker();
  document.getElementById("calendarPickerMask").style.display="grid";
 }
@@ -703,11 +712,11 @@ function hideCalendarPicker(){
  document.getElementById("calendarPickerMask").style.display="none";
 }
 
-// 切换年月选择层的年份范围
-// 输入参数：yearOffset，年份偏移量，-1 为上一年，1 为下一年
+// 切换年月选择层的六年年份区间
+// 输入参数：yearOffset，年份区间偏移量，-1 为前六年，1 为后六年
 // 返回结果：无，刷新年份和月份选项
 function changeCalendarPickerYear(yearOffset){
- calendarPickerYear+=yearOffset;
+ calendarPickerStartYear+=yearOffset*6;
  renderCalendarPicker();
 }
 
@@ -974,10 +983,12 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.getElementById("saveBtn").onclick=()=>{
  const amountInput=document.getElementById("amount");
  const noteInput=document.getElementById("note");
+ const recordDateInput=document.getElementById("recordDate");
  const typeSelect=document.getElementById("type");
  const categorySelect=document.getElementById("category");
  const subcategorySelect=document.getElementById("subcategory");
  const amount=amountInput.value.trim();
+ const recordDate=recordDateInput.value||formatCalendarDateKey(new Date());
  if(!amount)return;
  ledger.push({
    id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),
@@ -986,7 +997,7 @@ document.getElementById("saveBtn").onclick=()=>{
    category:categorySelect.value,
    subcategory:typeSelect.value==="💸 支出"?subcategorySelect.value:"",
    note:noteInput.value.trim(),
-   time:new Date().toLocaleString()
+   time:updateRecordDate(recordDate)
  });
  document.getElementById("ash").textContent="📖 正在放进我们的小账本……";
  save();
@@ -999,6 +1010,7 @@ document.getElementById("saveBtn").onclick=()=>{
 };
 document.getElementById("type").onchange=event=>updateCategoryOptions(event.target.value);
 document.getElementById("category").onchange=event=>updateSubcategoryOptions(event.target.value);
+document.getElementById("recordDate").value=formatCalendarDateKey(new Date());
 updateCategoryOptions(document.getElementById("type").value);
 render();
 </script>
