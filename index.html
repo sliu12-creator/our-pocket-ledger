@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.1.0</title>
+<title>我们的小账本 v1.1.1</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -131,15 +130,18 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 .summaryLabel{display:block;margin-bottom:3px;font-size:13px;color:#7897a4}
 .summaryAmount{display:block;font-size:17px;font-weight:700;color:#2E6F92;white-space:nowrap}
 .summaryAmount.income{color:#4FAF72}
-.monthlyBudget{display:grid;gap:10px;margin:0 0 14px;padding:12px 13px;border:1px solid rgba(255,255,255,.72);border-radius:16px;background:rgba(237,249,245,.48);box-shadow:inset 0 1px 0 rgba(255,255,255,.68)}
+.monthlyBudget{display:grid;gap:8px;margin:0 0 14px;padding:11px 13px;border:1px solid rgba(255,255,255,.72);border-radius:16px;background:rgba(237,249,245,.48);box-shadow:inset 0 1px 0 rgba(255,255,255,.68)}
 .budgetHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .budgetTitle{font-size:15px;font-weight:650;color:#416879}
 .budgetSettings{width:auto;padding:7px 9px;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:13px}
-.budgetGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 14px}
+.budgetGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px}
 .budgetLabel{display:block;margin-bottom:3px;font-size:13px;color:#7897a4}
 .budgetValue{display:block;font-size:16px;font-weight:700;color:#2E6F92;white-space:nowrap}
-.budgetValue.remaining{color:#4FAF72}
-.budgetValue.over{color:#b66d73}
+.budgetProgressRow{display:flex;align-items:center;gap:9px}
+.budgetProgressTrack{height:5px;flex:1;overflow:hidden;border-radius:999px;background:rgba(121,174,185,.18)}
+.budgetProgressBar{height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#8fcfdb,#69b7c8);transition:width .2s ease}
+.budgetProgressBar.over{background:linear-gradient(90deg,#e3a1a6,#c97880)}
+.budgetProgressText{min-width:34px;text-align:right;font-size:12px;font-weight:650;color:#678}
 .budgetHint{font-size:13px;color:#678;line-height:1.4}
 .recentSection{margin:0 0 14px}
 .recentSection h3{margin-bottom:8px;font-size:17px}
@@ -236,6 +238,10 @@ backdrop-filter:blur(18px) saturate(135%);
 #saveEdit,#cancelEdit,#cancelDelete,#confirmDelete{margin-top:8px}
 #cancelEdit,#cancelDelete{background:rgba(255,255,255,.7);color:#4c7180}
 #confirmDelete{background:linear-gradient(180deg,#d9959b,#c6757e)}
+.budgetModalActions{display:flex;gap:10px;margin-top:2px}
+.budgetModalActions button{margin:0}
+#cancelBudgetBtn{background:rgba(255,255,255,.7);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
+#saveBudgetBtn{box-shadow:0 8px 18px rgba(83,153,171,.2)}
 .editDateInput{width:min(100%,180px)!important}
 @media (max-width:520px){
 .wrap{padding-left:14px;padding-right:14px}
@@ -260,7 +266,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.1.0</h2>
+<h2>我们的小账本 · v1.1.1</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -276,10 +282,9 @@ h2{font-size:23px}
 <div class="budgetHeader"><span class="budgetTitle">🌱 本月预算</span><button class="budgetSettings" id="openBudgetSettings">⚙️ 设置本月预算</button></div>
 <div class="budgetGrid">
 <div><span class="budgetLabel">预算</span><strong class="budgetValue" id="budgetAmountValue">暂未设置</strong></div>
-<div><span class="budgetLabel">已花</span><strong class="budgetValue" id="budgetSpentValue">--</strong></div>
-<div><span class="budgetLabel">剩余</span><strong class="budgetValue" id="budgetRemainingValue">--</strong></div>
-<div><span class="budgetLabel">每日建议</span><strong class="budgetValue" id="budgetDailyValue">--</strong></div>
+<div><span class="budgetLabel">今日建议</span><strong class="budgetValue" id="budgetDailyValue">--</strong></div>
 </div>
+<div class="budgetProgressRow"><div class="budgetProgressTrack"><div class="budgetProgressBar" id="budgetProgressBar"></div></div><span class="budgetProgressText" id="budgetProgressText">--</span></div>
 <div class="budgetHint" id="budgetHint"></div>
 </div>
 
@@ -368,8 +373,7 @@ h2{font-size:23px}
 <h3>设置本月预算</h3>
 <p class="small">本月最多花多少钱？</p>
 <input id="budgetInput" type="number" inputmode="decimal" step="0.01" min="0" placeholder="金额">
-<button id="saveBudgetBtn">保存预算</button>
-<button id="cancelBudgetBtn">取消</button>
+<div class="budgetModalActions"><button id="cancelBudgetBtn">取消</button><button id="saveBudgetBtn">保存预算</button></div>
 </div>
 </div>
 
@@ -908,7 +912,7 @@ function calculateMonthlyBudgetStatus(){
 // 返回结果：预算卡片中展示的提示文字
 function getBudgetHint(budgetStatus){
  if(!budgetStatus.hasBudget)return "设置一个小目标，从今天开始慢慢来。";
- if(budgetStatus.remaining<0)return "这个月需要稍微收一收啦。";
+ if(budgetStatus.remaining<0)return "没关系，我们还有下个月 🌊";
  if(budgetStatus.spent/budgetStatus.amount>=0.8)return "最近花销稍微靠近计划啦 🌱";
  return "今天也可以安心生活 🤍";
 }
@@ -919,21 +923,22 @@ function getBudgetHint(budgetStatus){
 function renderBudget(){
  const budgetStatus=calculateMonthlyBudgetStatus();
  const budgetAmountElement=document.getElementById("budgetAmountValue");
- const spentElement=document.getElementById("budgetSpentValue");
- const remainingElement=document.getElementById("budgetRemainingValue");
  const dailyElement=document.getElementById("budgetDailyValue");
+ const progressBar=document.getElementById("budgetProgressBar");
+ const progressText=document.getElementById("budgetProgressText");
  if(!budgetStatus.hasBudget){
    budgetAmountElement.textContent="暂未设置预算";
-   spentElement.textContent="--";
-   remainingElement.textContent="--";
    dailyElement.textContent="--";
-   remainingElement.className="budgetValue";
+   progressBar.style.width="0%";
+   progressBar.className="budgetProgressBar";
+   progressText.textContent="--";
  }else{
    budgetAmountElement.textContent=formatBudgetAmount(budgetStatus.amount);
-   spentElement.textContent=formatBudgetAmount(budgetStatus.spent);
-   remainingElement.textContent=formatBudgetAmount(budgetStatus.remaining);
    dailyElement.textContent=formatBudgetAmount(budgetStatus.dailySuggestion);
-   remainingElement.className="budgetValue "+(budgetStatus.remaining<0?"over":"remaining");
+   const usagePercent=budgetStatus.amount===0?(budgetStatus.spent>0?100:0):budgetStatus.spent/budgetStatus.amount*100;
+   progressBar.style.width=Math.min(usagePercent,100)+"%";
+   progressBar.className="budgetProgressBar"+(usagePercent>100?" over":"");
+   progressText.textContent=Math.round(usagePercent)+"%";
  }
  document.getElementById("budgetHint").textContent=getBudgetHint(budgetStatus);
 }
