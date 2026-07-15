@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.3.0</title>
+<title>我们的小账本 v1.3.1</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -189,6 +189,8 @@ linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
 .statisticsTrendChart{padding-top:2px}
 .statisticsTrendChart svg{display:block;width:100%;height:auto;overflow:visible}
 .statisticsTrendLabel{fill:#7897a4;font-size:11px}
+.statisticsTrendDetails{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:-7px 0 1px;padding:8px 10px;border:1px solid rgba(255,255,255,.72);border-radius:12px;background:rgba(246,252,253,.48);font-size:13px;color:#7897a4}
+.statisticsTrendDetails strong{color:#2E6F92;font-size:15px}
 .statisticsTrendBaseline{stroke:rgba(121,151,164,.26);stroke-width:1}
 .statisticsTrendArea{fill:#8fcfdb;fill-opacity:.16}
 .statisticsTrendLine{fill:none;stroke:#69b7c8;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
@@ -290,7 +292,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.3.0</h2>
+<h2>我们的小账本 · v1.3.1</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -366,13 +368,14 @@ h2{font-size:23px}
 </div>
 <div class="statisticsContent">
 <section class="statisticsSection">
-<div class="statisticsSectionHeader"><h3>🌊 本月支出组成</h3><button class="statisticsMartyBtn" id="showMartyPlaceholder" title="Marty 留言" aria-label="Marty 留言">📖</button></div>
+<div class="statisticsSectionHeader"><h3 id="expenseCompositionTitle">🌊 本月支出组成</h3><button class="statisticsMartyBtn" id="showMartyPlaceholder" title="Marty 留言" aria-label="Marty 留言">📖</button></div>
 <div class="statisticsMartyNotice" id="statisticsMartyNotice" style="display:none" aria-live="polite"></div>
 <div id="expenseStatistics"></div>
 </section>
 <section class="statisticsSection">
-<div class="statisticsSectionHeader"><h3>📈 消费趋势</h3><button class="statisticsMartyBtn" id="showTrendMartyPlaceholder" title="Marty 留言" aria-label="Marty 留言">📖</button></div>
+<div class="statisticsSectionHeader"><h3 id="expenseTrendTitle">📈 消费趋势</h3><button class="statisticsMartyBtn" id="showTrendMartyPlaceholder" title="Marty 留言" aria-label="Marty 留言">📖</button></div>
 <div class="statisticsMartyNotice" id="trendMartyNotice" style="display:none" aria-live="polite"></div>
+<div class="statisticsTrendDetails" id="trendPointDetails" style="display:none" aria-live="polite"><span id="trendPointDate"></span><strong id="trendPointAmount"></strong></div>
 <div id="expenseTrend"></div>
 </section>
 </div>
@@ -433,6 +436,7 @@ let ledger=JSON.parse(localStorage.getItem(KEY)||"[]");
 let budgets=loadBudgets();
 let editingId=null;
 let trendMartyNoticeTimer=null;
+let selectedTrendDay=null;
 let calendarMonthDate=new Date(new Date().getFullYear(),new Date().getMonth(),1);
 let selectedCalendarDate=formatCalendarDateKey(new Date());
 let calendarPickerYear=calendarMonthDate.getFullYear();
@@ -945,6 +949,22 @@ function calculateMonthlyDailyExpenses(){
  return dailyExpenses;
 }
 
+// 更新 Statistics 页面中与当前统计月份对应的模块标题
+// 输入参数：无，使用系统当前日期
+// 返回结果：无，直接更新两个 Statistics 模块标题
+function renderStatisticsMonthTitles(){
+ const currentMonth=new Date().getMonth()+1;
+ document.getElementById("expenseCompositionTitle").textContent=`🌊 ${currentMonth}月支出组成`;
+ document.getElementById("expenseTrendTitle").textContent=`📈 ${currentMonth}月消费趋势`;
+}
+
+// 返回消费趋势图需要展示的简洁日期刻度
+// 输入参数：daysInMonth，当前月的总天数
+// 返回结果：去重后的日期刻度数组
+function getTrendLabelDays(daysInMonth){
+ return [...new Set([1,7,14,21,28,daysInMonth].filter(day=>day<=daysInMonth))];
+}
+
 // 计算趋势折线图中每个日期的 SVG 坐标
 // 输入参数：dailyExpenses，每日支出金额数组；chartWidth、chartHeight，SVG 画布尺寸
 // 返回结果：包含坐标、基线和绘图区尺寸的趋势图坐标对象
@@ -958,6 +978,21 @@ function createTrendChartCoordinates(dailyExpenses,chartWidth,chartHeight){
    y:chartPadding.top+plotHeight*(1-amount/maximumExpense)
  }));
  return {points:points,baseY:chartHeight-chartPadding.bottom,chartPadding:chartPadding};
+}
+
+// 根据已选择的趋势日期显示对应的日期与支出金额
+// 输入参数：dailyExpenses，当前月每日支出金额数组
+// 返回结果：无，直接更新趋势图上方的数据点信息区域
+function renderTrendPointDetails(dailyExpenses){
+ const details=document.getElementById("trendPointDetails");
+ if(!selectedTrendDay||selectedTrendDay>dailyExpenses.length){
+   details.style.display="none";
+   return;
+ }
+ const currentMonth=new Date().getMonth()+1;
+ document.getElementById("trendPointDate").textContent=`${currentMonth}月${selectedTrendDay}日`;
+ document.getElementById("trendPointAmount").textContent=`支出 ${formatBudgetAmount(dailyExpenses[selectedTrendDay-1])}`;
+ details.style.display="flex";
 }
 
 // 创建带日期标签的消费趋势 SVG 折线图
@@ -981,9 +1016,32 @@ function createExpenseTrendSvg(dailyExpenses){
  const area=createSvgElement("path",{d:`M ${firstPoint.x} ${coordinates.baseY} L ${pointText} L ${lastPoint.x} ${coordinates.baseY} Z`,class:"statisticsTrendArea"});
  const line=createSvgElement("polyline",{points:pointText,class:"statisticsTrendLine"});
  svg.append(baseline,area,line);
- [...new Set([1,Math.ceil(dailyExpenses.length/2),dailyExpenses.length])].forEach(day=>{
+ if(selectedTrendDay&&coordinates.points[selectedTrendDay-1]){
+   const selectedPoint=coordinates.points[selectedTrendDay-1];
+   svg.appendChild(createSvgElement("circle",{cx:selectedPoint.x,cy:selectedPoint.y,r:4.5,fill:"#f8feff",stroke:"#69b7c8","stroke-width":2}));
+ }
+ dailyExpenses.forEach((amount,index)=>{
+   const point=coordinates.points[index];
+   const touchTarget=createSvgElement("circle",{cx:point.x,cy:point.y,r:6,fill:"#ffffff","fill-opacity":0});
+   touchTarget.setAttribute("tabindex","0");
+   touchTarget.setAttribute("role","button");
+   touchTarget.setAttribute("aria-label",`查看${index+1}日支出`);
+   touchTarget.addEventListener("click",()=>{
+     selectedTrendDay=index+1;
+     renderExpenseTrend();
+   });
+   touchTarget.addEventListener("keydown",event=>{
+     if(event.key!=="Enter"&&event.key!==" ")return;
+     event.preventDefault();
+     selectedTrendDay=index+1;
+     renderExpenseTrend();
+   });
+   svg.appendChild(touchTarget);
+ });
+ getTrendLabelDays(dailyExpenses.length).forEach(day=>{
    const point=coordinates.points[day-1];
-   const label=createSvgElement("text",{x:point.x,y:chartHeight-7,"text-anchor":"middle",class:"statisticsTrendLabel"});
+   const textAnchor=day===1?"start":day===dailyExpenses.length?"end":"middle";
+   const label=createSvgElement("text",{x:point.x,y:chartHeight-7,"text-anchor":textAnchor,class:"statisticsTrendLabel"});
    label.textContent=`${day}日`;
    svg.appendChild(label);
  });
@@ -998,6 +1056,8 @@ function renderExpenseTrend(){
  const dailyExpenses=calculateMonthlyDailyExpenses();
  container.innerHTML="";
  if(!dailyExpenses.some(amount=>amount>0)){
+   selectedTrendDay=null;
+   renderTrendPointDetails(dailyExpenses);
    container.innerHTML="<div class='statisticsEmpty'><span class='statisticsEmptyIcon'>🌱</span><span>这个月还没有支出记录。<br>等记录几笔之后，我们一起看看消费趋势吧。</span></div>";
    return;
  }
@@ -1005,6 +1065,7 @@ function renderExpenseTrend(){
  chart.className="statisticsTrendChart";
  chart.appendChild(createExpenseTrendSvg(dailyExpenses));
  container.appendChild(chart);
+ renderTrendPointDetails(dailyExpenses);
 }
 
 // 根据分类金额生成圆环图所需的 conic-gradient 颜色区间
@@ -1260,6 +1321,7 @@ function renderRecentRecords(records,container){
 function render(){
  renderMonthlySummary();
  renderBudget();
+ renderStatisticsMonthTitles();
  renderExpenseStatistics();
  renderExpenseTrend();
  renderRecentRecords(getRecentRecords(ledger),document.getElementById("recentList"));
@@ -1286,11 +1348,13 @@ function hideFullLedger(){
 // 返回结果：无，显示 Statistics 页面
 function showStatistics(){
  document.getElementById("statisticsView").style.display="block";
+ selectedTrendDay=null;
  document.getElementById("statisticsMartyNotice").style.display="none";
  document.getElementById("statisticsMartyNotice").textContent="";
  clearTimeout(trendMartyNoticeTimer);
  document.getElementById("trendMartyNotice").style.display="none";
  document.getElementById("trendMartyNotice").textContent="";
+ renderStatisticsMonthTitles();
  renderExpenseStatistics();
  renderExpenseTrend();
 }
