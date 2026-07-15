@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.2.1</title>
+<title>我们的小账本 v1.2.2</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -126,7 +126,7 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 }
 .summaryHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .summaryTitle{font-size:15px;font-weight:650;color:#416879}
-.summaryStatistics{width:auto;padding:7px 9px;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:13px;white-space:nowrap}
+.summaryStatistics,.budgetSettings{display:grid;place-items:center;width:36px;height:36px;padding:0;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:16px}
 .summaryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .summaryItem{min-width:0}
 .summaryLabel{display:block;margin-bottom:3px;font-size:13px;color:#7897a4}
@@ -135,7 +135,6 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 .monthlyBudget{display:grid;gap:8px;margin:0 0 14px;padding:11px 13px;border:1px solid rgba(255,255,255,.72);border-radius:16px;background:rgba(237,249,245,.48);box-shadow:inset 0 1px 0 rgba(255,255,255,.68)}
 .budgetHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .budgetTitle{font-size:15px;font-weight:650;color:#416879}
-.budgetSettings{width:auto;padding:7px 9px;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:13px}
 .budgetGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px}
 .budgetLabel{display:block;margin-bottom:3px;font-size:13px;color:#7897a4}
 .budgetValue{display:block;font-size:16px;font-weight:700;color:#2E6F92;white-space:nowrap}
@@ -179,7 +178,10 @@ linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
 .fullLedgerList{display:grid;gap:16px;max-width:760px;margin:0 auto}
 .statisticsContent{display:grid;gap:16px;max-width:760px;margin:0 auto}
 .statisticsSection{display:grid;gap:16px;padding:16px;border:1px solid rgba(255,255,255,.74);border-radius:20px;background:rgba(255,255,255,.48);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.statisticsSectionHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .statisticsSection h3{margin:0;font-size:18px}
+.statisticsMartyBtn{display:grid;place-items:center;width:34px;height:34px;padding:0;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:16px}
+.statisticsMartyNotice{margin:-7px 0 1px;font-size:13px;color:#7897a4}
 .statisticsDonut{display:grid;place-items:center;width:min(52vw,190px);aspect-ratio:1;margin:0 auto;border-radius:50%;background:rgba(220,240,244,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.76),0 12px 26px rgba(82,124,143,.1)}
 .statisticsDonutCenter{display:grid;place-items:center;align-content:center;width:62%;aspect-ratio:1;padding:10px;border-radius:50%;background:rgba(250,254,255,.9);text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.84)}
 .statisticsDonutCenter strong{font-size:17px;color:#2E6F92;white-space:nowrap}
@@ -282,11 +284,11 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.2.1</h2>
+<h2>我们的小账本 · v1.2.2</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
-<div class="summaryHeader"><div class="summaryTitle">🌊 本月小结</div><button class="summaryStatistics" id="viewStatisticsBtn">📊 Statistics</button></div>
+<div class="summaryHeader"><div class="summaryTitle">🌊 本月小结</div><button class="summaryStatistics" id="viewStatisticsBtn" title="查看统计" aria-label="查看统计">📊</button></div>
 <div class="summaryGrid">
 <div class="summaryItem"><span class="summaryLabel">收入</span><strong class="summaryAmount income" id="monthlyIncome">+ ¥0</strong></div>
 <div class="summaryItem"><span class="summaryLabel">支出</span><strong class="summaryAmount" id="monthlyExpense">- ¥0</strong></div>
@@ -295,7 +297,7 @@ h2{font-size:23px}
 </div>
 
 <div class="monthlyBudget">
-<div class="budgetHeader"><span class="budgetTitle">🌱 本月预算</span><button class="budgetSettings" id="openBudgetSettings">⚙️ 设置本月预算</button></div>
+<div class="budgetHeader"><span class="budgetTitle">🌱 本月预算</span><button class="budgetSettings" id="openBudgetSettings" title="设置本月预算" aria-label="设置本月预算">⚙️</button></div>
 <div class="budgetGrid">
 <div><span class="budgetLabel">预算</span><strong class="budgetValue" id="budgetAmountValue">暂未设置</strong></div>
 <div><span class="budgetLabel">今日建议</span><strong class="budgetValue" id="budgetDailyValue">--</strong></div>
@@ -354,11 +356,12 @@ h2{font-size:23px}
 <div class="fullLedgerView" id="statisticsView" style="display:none">
 <div class="fullLedgerHeader">
 <button class="backBtn" id="backFromStatistics">← 返回</button>
-<h2>📊 Statistics</h2>
+<h2>📊 统计</h2>
 </div>
 <div class="statisticsContent">
 <section class="statisticsSection">
-<h3>🌊 本月支出组成</h3>
+<div class="statisticsSectionHeader"><h3>🌊 本月支出组成</h3><button class="statisticsMartyBtn" id="showMartyPlaceholder" title="Marty 留言" aria-label="Marty 留言">📖</button></div>
+<div class="statisticsMartyNotice" id="statisticsMartyNotice" style="display:none" aria-live="polite"></div>
 <div id="expenseStatistics"></div>
 </section>
 </div>
@@ -1192,6 +1195,8 @@ function hideFullLedger(){
 // 返回结果：无，显示 Statistics 页面
 function showStatistics(){
  document.getElementById("statisticsView").style.display="block";
+ document.getElementById("statisticsMartyNotice").style.display="none";
+ document.getElementById("statisticsMartyNotice").textContent="";
  renderExpenseStatistics();
 }
 
@@ -1200,6 +1205,15 @@ function showStatistics(){
 // 返回结果：无，隐藏 Statistics 页面
 function hideStatistics(){
  document.getElementById("statisticsView").style.display="none";
+}
+
+// 显示 Marty 留言功能的临时提示，不保存任何数据
+// 输入参数：无
+// 返回结果：无，更新 Statistics 页面中的提示文字
+function showMartyPlaceholder(){
+ const martyNotice=document.getElementById("statisticsMartyNotice");
+ martyNotice.textContent="🤍 Marty 正在准备留言……";
+ martyNotice.style.display="block";
 }
 
 // 打开日历全屏查看页面并刷新当前月份数据
@@ -1250,6 +1264,7 @@ document.getElementById("viewLedgerBtn").onclick=showFullLedger;
 document.getElementById("backToHome").onclick=hideFullLedger;
 document.getElementById("viewStatisticsBtn").onclick=showStatistics;
 document.getElementById("backFromStatistics").onclick=hideStatistics;
+document.getElementById("showMartyPlaceholder").onclick=showMartyPlaceholder;
 document.getElementById("viewCalendarBtn").onclick=showCalendar;
 document.getElementById("backFromCalendar").onclick=hideCalendar;
 document.getElementById("previousMonthBtn").onclick=()=>changeCalendarMonth(-1);
