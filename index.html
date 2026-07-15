@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.1.1</title>
+<title>我们的小账本 v1.2.0</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -124,7 +124,9 @@ border-radius:16px;
 background:rgba(239,250,252,.48);
 box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 }
+.summaryHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .summaryTitle{font-size:15px;font-weight:650;color:#416879}
+.summaryStatistics{width:auto;padding:7px 9px;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:13px;white-space:nowrap}
 .summaryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .summaryItem{min-width:0}
 .summaryLabel{display:block;margin-bottom:3px;font-size:13px;color:#7897a4}
@@ -175,6 +177,20 @@ linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
 .fullLedgerHeader h2{margin:0;font-size:22px}
 .backBtn{width:auto;padding:9px 12px;border-radius:999px;background:rgba(255,255,255,.68);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
 .fullLedgerList{display:grid;gap:16px;max-width:760px;margin:0 auto}
+.statisticsContent{display:grid;gap:16px;max-width:760px;margin:0 auto}
+.statisticsSection{display:grid;gap:16px;padding:16px;border:1px solid rgba(255,255,255,.74);border-radius:20px;background:rgba(255,255,255,.48);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.statisticsSection h3{margin:0;font-size:18px}
+.statisticsDonut{display:grid;place-items:center;width:min(52vw,190px);aspect-ratio:1;margin:0 auto;border-radius:50%;background:rgba(220,240,244,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.76),0 12px 26px rgba(82,124,143,.1)}
+.statisticsDonutCenter{display:grid;place-items:center;align-content:center;width:62%;aspect-ratio:1;padding:10px;border-radius:50%;background:rgba(250,254,255,.9);text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.84)}
+.statisticsDonutCenter strong{font-size:17px;color:#2E6F92;white-space:nowrap}
+.statisticsDonutCenter span{margin-top:3px;font-size:11px;color:#7897a4}
+.statisticsCategoryList{display:grid;gap:2px}
+.statisticsCategoryItem{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px;border-top:1px solid rgba(137,174,187,.18)}
+.statisticsCategoryLabel{display:flex;align-items:center;gap:8px;min-width:0;color:#416879;font-size:15px}
+.statisticsColorDot{width:8px;height:8px;flex:0 0 auto;border-radius:50%}
+.statisticsCategoryPercent{flex:0 0 auto;font-size:14px;font-weight:700;color:#2E6F92}
+.statisticsEmpty{display:grid;justify-items:center;gap:8px;padding:22px 10px 16px;text-align:center;color:#7897a4;line-height:1.55}
+.statisticsEmptyIcon{font-size:28px}
 .calendarContent{display:grid;gap:16px;max-width:760px;margin:0 auto}
 .calendarToolbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .calendarToolbar button{width:auto;padding:9px 11px;background:rgba(255,255,255,.68);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
@@ -266,11 +282,11 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.1.1</h2>
+<h2>我们的小账本 · v1.2.0</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
-<div class="summaryTitle">🌊 本月小结</div>
+<div class="summaryHeader"><div class="summaryTitle">🌊 本月小结</div><button class="summaryStatistics" id="viewStatisticsBtn">📊 Statistics</button></div>
 <div class="summaryGrid">
 <div class="summaryItem"><span class="summaryLabel">收入</span><strong class="summaryAmount income" id="monthlyIncome">+ ¥0</strong></div>
 <div class="summaryItem"><span class="summaryLabel">支出</span><strong class="summaryAmount" id="monthlyExpense">- ¥0</strong></div>
@@ -333,6 +349,19 @@ h2{font-size:23px}
 </div>
 
 <div class="fullLedgerList" id="fullLedgerList"></div>
+</div>
+
+<div class="fullLedgerView" id="statisticsView" style="display:none">
+<div class="fullLedgerHeader">
+<button class="backBtn" id="backFromStatistics">← 返回</button>
+<h2>📊 Statistics</h2>
+</div>
+<div class="statisticsContent">
+<section class="statisticsSection">
+<h3>🌊 本月支出组成</h3>
+<div id="expenseStatistics"></div>
+</section>
+</div>
 </div>
 
 <div class="fullLedgerView" id="fullCalendarView" style="display:none">
@@ -847,6 +876,78 @@ function calculateMonthlySummary(){
  return monthlySummary;
 }
 
+const STATISTICS_COLORS=["#73b9c8","#8dc7a7","#9eb8d5","#d2b38a","#a8b9c6","#c9a6bd","#9bbfae","#d4abb0","#8bb6c2"];
+
+// 汇总当前自然月各支出一级分类的金额，兼容没有 type 字段的旧记录
+// 输入参数：无，使用当前 ledger 数据和系统当前日期
+// 返回结果：按金额从高到低排列的分类金额数组
+function calculateMonthlyExpenseCategories(){
+ const now=new Date();
+ const categoryAmounts={};
+ ledger.forEach(record=>{
+   const recordDate=parseRecordTime(record.time);
+   if(recordDate.getFullYear()!==now.getFullYear()||recordDate.getMonth()!==now.getMonth())return;
+   const classification=getRecordClassification(record);
+   if(isIncomeCategory(classification.type))return;
+   const category=classification.category||"📦 其它";
+   categoryAmounts[category]=(categoryAmounts[category]||0)+(Number(record.amount)||0);
+ });
+ return Object.entries(categoryAmounts)
+   .map(([category,amount])=>({category:category,amount:amount}))
+   .sort((firstCategory,secondCategory)=>secondCategory.amount-firstCategory.amount);
+}
+
+// 根据分类金额生成圆环图所需的 conic-gradient 颜色区间
+// 输入参数：categories，按金额排序的分类金额数组；totalAmount，全部分类金额总和
+// 返回结果：用于 CSS background 的颜色区间字符串
+function buildExpenseDonutGradient(categories,totalAmount){
+ let currentPercent=0;
+ return categories.map((category,index)=>{
+   const startPercent=currentPercent;
+   currentPercent+=category.amount/totalAmount*100;
+   const color=STATISTICS_COLORS[index%STATISTICS_COLORS.length];
+   return `${color} ${startPercent}% ${currentPercent}%`;
+ }).join(",");
+}
+
+// 渲染本月支出分类圆环图、分类占比列表或无支出提示
+// 输入参数：无，使用当前 ledger 数据
+// 返回结果：无，直接更新 Statistics 页面中的统计区域
+function renderExpenseStatistics(){
+ const container=document.getElementById("expenseStatistics");
+ const categories=calculateMonthlyExpenseCategories();
+ const totalAmount=categories.reduce((total,category)=>total+category.amount,0);
+ container.innerHTML="";
+ if(!totalAmount){
+   container.innerHTML="<div class='statisticsEmpty'><span class='statisticsEmptyIcon'>🌱</span><span>这个月还没有支出记录。<br>等记录几笔之后，我们一起看看消费分布吧。</span></div>";
+   return;
+ }
+ const donut=document.createElement("div");
+ donut.className="statisticsDonut";
+ donut.style.background=`conic-gradient(${buildExpenseDonutGradient(categories,totalAmount)})`;
+ donut.innerHTML=`<div class="statisticsDonutCenter"><strong>${formatBudgetAmount(totalAmount)}</strong><span>本月支出</span></div>`;
+ const categoryList=document.createElement("div");
+ categoryList.className="statisticsCategoryList";
+ categories.forEach((category,index)=>{
+   const categoryItem=document.createElement("div");
+   categoryItem.className="statisticsCategoryItem";
+   const categoryLabel=document.createElement("span");
+   categoryLabel.className="statisticsCategoryLabel";
+   const colorDot=document.createElement("i");
+   colorDot.className="statisticsColorDot";
+   colorDot.style.background=STATISTICS_COLORS[index%STATISTICS_COLORS.length];
+   const categoryName=document.createElement("span");
+   categoryName.textContent=category.category;
+   const categoryPercent=document.createElement("strong");
+   categoryPercent.className="statisticsCategoryPercent";
+   categoryPercent.textContent=Math.round(category.amount/totalAmount*100)+"%";
+   categoryLabel.append(colorDot,categoryName);
+   categoryItem.append(categoryLabel,categoryPercent);
+   categoryList.appendChild(categoryItem);
+ });
+ container.append(donut,categoryList);
+}
+
 // 读取所有已保存的月度预算，兼容早期单条预算对象
 // 输入参数：无，从 LocalStorage 读取预算数据
 // 返回结果：包含 { year, month, amount } 的预算数组
@@ -1049,6 +1150,7 @@ function renderRecentRecords(records,container){
 function render(){
  renderMonthlySummary();
  renderBudget();
+ renderExpenseStatistics();
  renderRecentRecords(getRecentRecords(ledger),document.getElementById("recentList"));
  renderRecordList(ledger,document.getElementById("fullLedgerList"));
  renderCalendar();
@@ -1066,6 +1168,21 @@ function showFullLedger(){
 // 返回结果：无，隐藏完整账本页面
 function hideFullLedger(){
  document.getElementById("fullLedgerView").style.display="none";
+}
+
+// 打开 Statistics 全屏页面并刷新本月支出分类统计
+// 输入参数：无
+// 返回结果：无，显示 Statistics 页面
+function showStatistics(){
+ document.getElementById("statisticsView").style.display="block";
+ renderExpenseStatistics();
+}
+
+// 关闭 Statistics 全屏页面并返回首页
+// 输入参数：无
+// 返回结果：无，隐藏 Statistics 页面
+function hideStatistics(){
+ document.getElementById("statisticsView").style.display="none";
 }
 
 // 打开日历全屏查看页面并刷新当前月份数据
@@ -1114,6 +1231,8 @@ function saveBudgetSettings(){
 
 document.getElementById("viewLedgerBtn").onclick=showFullLedger;
 document.getElementById("backToHome").onclick=hideFullLedger;
+document.getElementById("viewStatisticsBtn").onclick=showStatistics;
+document.getElementById("backFromStatistics").onclick=hideStatistics;
 document.getElementById("viewCalendarBtn").onclick=showCalendar;
 document.getElementById("backFromCalendar").onclick=hideCalendar;
 document.getElementById("previousMonthBtn").onclick=()=>changeCalendarMonth(-1);
