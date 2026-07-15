@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.2.2</title>
+<title>我们的小账本 v1.3.0</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -181,11 +181,17 @@ linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
 .statisticsSectionHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .statisticsSection h3{margin:0;font-size:18px}
 .statisticsMartyBtn{display:grid;place-items:center;width:34px;height:34px;padding:0;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:16px}
-.statisticsMartyNotice{margin:-7px 0 1px;font-size:13px;color:#7897a4}
+.statisticsMartyNotice{margin:-7px 0 1px;font-size:13px;color:#7897a4;white-space:pre-line}
 .statisticsDonut{display:grid;place-items:center;width:min(52vw,190px);aspect-ratio:1;margin:0 auto;border-radius:50%;background:rgba(220,240,244,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.76),0 12px 26px rgba(82,124,143,.1)}
 .statisticsDonutCenter{display:grid;place-items:center;align-content:center;width:62%;aspect-ratio:1;padding:10px;border-radius:50%;background:rgba(250,254,255,.9);text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.84)}
 .statisticsDonutCenter strong{font-size:17px;color:#2E6F92;white-space:nowrap}
 .statisticsDonutCenter span{margin-top:3px;font-size:11px;color:#7897a4}
+.statisticsTrendChart{padding-top:2px}
+.statisticsTrendChart svg{display:block;width:100%;height:auto;overflow:visible}
+.statisticsTrendLabel{fill:#7897a4;font-size:11px}
+.statisticsTrendBaseline{stroke:rgba(121,151,164,.26);stroke-width:1}
+.statisticsTrendArea{fill:#8fcfdb;fill-opacity:.16}
+.statisticsTrendLine{fill:none;stroke:#69b7c8;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .statisticsCategoryList{display:grid;gap:2px}
 .statisticsCategoryItem{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px;border-top:1px solid rgba(137,174,187,.18)}
 .statisticsCategoryLabel{display:flex;align-items:center;gap:8px;min-width:0;color:#416879;font-size:15px}
@@ -284,7 +290,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.2.2</h2>
+<h2>我们的小账本 · v1.3.0</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -364,6 +370,11 @@ h2{font-size:23px}
 <div class="statisticsMartyNotice" id="statisticsMartyNotice" style="display:none" aria-live="polite"></div>
 <div id="expenseStatistics"></div>
 </section>
+<section class="statisticsSection">
+<div class="statisticsSectionHeader"><h3>📈 消费趋势</h3><button class="statisticsMartyBtn" id="showTrendMartyPlaceholder" title="Marty 留言" aria-label="Marty 留言">📖</button></div>
+<div class="statisticsMartyNotice" id="trendMartyNotice" style="display:none" aria-live="polite"></div>
+<div id="expenseTrend"></div>
+</section>
 </div>
 </div>
 
@@ -421,6 +432,7 @@ const MSGS=[
 let ledger=JSON.parse(localStorage.getItem(KEY)||"[]");
 let budgets=loadBudgets();
 let editingId=null;
+let trendMartyNoticeTimer=null;
 let calendarMonthDate=new Date(new Date().getFullYear(),new Date().getMonth(),1);
 let selectedCalendarDate=formatCalendarDateKey(new Date());
 let calendarPickerYear=calendarMonthDate.getFullYear();
@@ -917,6 +929,84 @@ function calculateMonthlyExpenseCategories(){
    .sort((firstCategory,secondCategory)=>secondCategory.amount-firstCategory.amount);
 }
 
+// 汇总当前自然月每天的支出金额，未产生支出的日期保留为 0
+// 输入参数：无，使用当前 ledger 数据和系统当前日期
+// 返回结果：当前月每日支出金额数组，索引 0 对应当月 1 日
+function calculateMonthlyDailyExpenses(){
+ const now=new Date();
+ const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+ const dailyExpenses=Array(daysInMonth).fill(0);
+ ledger.forEach(record=>{
+   const recordDate=parseRecordTime(record.time);
+   if(recordDate.getFullYear()!==now.getFullYear()||recordDate.getMonth()!==now.getMonth())return;
+   if(isIncomeCategory(getRecordClassification(record).type))return;
+   dailyExpenses[recordDate.getDate()-1]+=Number(record.amount)||0;
+ });
+ return dailyExpenses;
+}
+
+// 计算趋势折线图中每个日期的 SVG 坐标
+// 输入参数：dailyExpenses，每日支出金额数组；chartWidth、chartHeight，SVG 画布尺寸
+// 返回结果：包含坐标、基线和绘图区尺寸的趋势图坐标对象
+function createTrendChartCoordinates(dailyExpenses,chartWidth,chartHeight){
+ const chartPadding={left:8,right:8,top:12,bottom:28};
+ const maximumExpense=Math.max(...dailyExpenses,1);
+ const plotWidth=chartWidth-chartPadding.left-chartPadding.right;
+ const plotHeight=chartHeight-chartPadding.top-chartPadding.bottom;
+ const points=dailyExpenses.map((amount,index)=>({
+   x:chartPadding.left+plotWidth*index/(dailyExpenses.length-1),
+   y:chartPadding.top+plotHeight*(1-amount/maximumExpense)
+ }));
+ return {points:points,baseY:chartHeight-chartPadding.bottom,chartPadding:chartPadding};
+}
+
+// 创建带日期标签的消费趋势 SVG 折线图
+// 输入参数：dailyExpenses，当前月每日支出金额数组
+// 返回结果：可直接插入页面的 SVG 图表元素
+function createExpenseTrendSvg(dailyExpenses){
+ const chartWidth=320;
+ const chartHeight=154;
+ const coordinates=createTrendChartCoordinates(dailyExpenses,chartWidth,chartHeight);
+ const svgNamespace="http://www.w3.org/2000/svg";
+ const createSvgElement=(elementName,attributes)=>{
+   const element=document.createElementNS(svgNamespace,elementName);
+   Object.entries(attributes).forEach(([attributeName,attributeValue])=>element.setAttribute(attributeName,attributeValue));
+   return element;
+ };
+ const svg=createSvgElement("svg",{viewBox:`0 0 ${chartWidth} ${chartHeight}`,role:"img","aria-label":"本月每日支出趋势"});
+ const pointText=coordinates.points.map(point=>`${point.x},${point.y}`).join(" ");
+ const firstPoint=coordinates.points[0];
+ const lastPoint=coordinates.points[coordinates.points.length-1];
+ const baseline=createSvgElement("line",{x1:coordinates.chartPadding.left,y1:coordinates.baseY,x2:chartWidth-coordinates.chartPadding.right,y2:coordinates.baseY,class:"statisticsTrendBaseline"});
+ const area=createSvgElement("path",{d:`M ${firstPoint.x} ${coordinates.baseY} L ${pointText} L ${lastPoint.x} ${coordinates.baseY} Z`,class:"statisticsTrendArea"});
+ const line=createSvgElement("polyline",{points:pointText,class:"statisticsTrendLine"});
+ svg.append(baseline,area,line);
+ [...new Set([1,Math.ceil(dailyExpenses.length/2),dailyExpenses.length])].forEach(day=>{
+   const point=coordinates.points[day-1];
+   const label=createSvgElement("text",{x:point.x,y:chartHeight-7,"text-anchor":"middle",class:"statisticsTrendLabel"});
+   label.textContent=`${day}日`;
+   svg.appendChild(label);
+ });
+ return svg;
+}
+
+// 渲染本月消费趋势图或无支出提示
+// 输入参数：无，使用当前 ledger 数据
+// 返回结果：无，直接更新 Statistics 页面中的趋势区域
+function renderExpenseTrend(){
+ const container=document.getElementById("expenseTrend");
+ const dailyExpenses=calculateMonthlyDailyExpenses();
+ container.innerHTML="";
+ if(!dailyExpenses.some(amount=>amount>0)){
+   container.innerHTML="<div class='statisticsEmpty'><span class='statisticsEmptyIcon'>🌱</span><span>这个月还没有支出记录。<br>等记录几笔之后，我们一起看看消费趋势吧。</span></div>";
+   return;
+ }
+ const chart=document.createElement("div");
+ chart.className="statisticsTrendChart";
+ chart.appendChild(createExpenseTrendSvg(dailyExpenses));
+ container.appendChild(chart);
+}
+
 // 根据分类金额生成圆环图所需的 conic-gradient 颜色区间
 // 输入参数：categories，按金额排序的分类金额数组；totalAmount，全部分类金额总和
 // 返回结果：用于 CSS background 的颜色区间字符串
@@ -1171,6 +1261,7 @@ function render(){
  renderMonthlySummary();
  renderBudget();
  renderExpenseStatistics();
+ renderExpenseTrend();
  renderRecentRecords(getRecentRecords(ledger),document.getElementById("recentList"));
  renderRecordList(ledger,document.getElementById("fullLedgerList"));
  renderCalendar();
@@ -1197,7 +1288,11 @@ function showStatistics(){
  document.getElementById("statisticsView").style.display="block";
  document.getElementById("statisticsMartyNotice").style.display="none";
  document.getElementById("statisticsMartyNotice").textContent="";
+ clearTimeout(trendMartyNoticeTimer);
+ document.getElementById("trendMartyNotice").style.display="none";
+ document.getElementById("trendMartyNotice").textContent="";
  renderExpenseStatistics();
+ renderExpenseTrend();
 }
 
 // 关闭 Statistics 全屏页面并返回首页
@@ -1214,6 +1309,19 @@ function showMartyPlaceholder(){
  const martyNotice=document.getElementById("statisticsMartyNotice");
  martyNotice.textContent="🤍 Marty 正在准备留言……";
  martyNotice.style.display="block";
+}
+
+// 显示消费趋势模块中 Marty 留言功能的临时提示
+// 输入参数：无
+// 返回结果：无，短暂显示趋势模块中的提示文字
+function showTrendMartyPlaceholder(){
+ const trendMartyNotice=document.getElementById("trendMartyNotice");
+ clearTimeout(trendMartyNoticeTimer);
+ trendMartyNotice.textContent="🤍 Marty\n这个功能正在准备中。🌱";
+ trendMartyNotice.style.display="block";
+ trendMartyNoticeTimer=setTimeout(()=>{
+   trendMartyNotice.style.display="none";
+ },2400);
 }
 
 // 打开日历全屏查看页面并刷新当前月份数据
@@ -1265,6 +1373,7 @@ document.getElementById("backToHome").onclick=hideFullLedger;
 document.getElementById("viewStatisticsBtn").onclick=showStatistics;
 document.getElementById("backFromStatistics").onclick=hideStatistics;
 document.getElementById("showMartyPlaceholder").onclick=showMartyPlaceholder;
+document.getElementById("showTrendMartyPlaceholder").onclick=showTrendMartyPlaceholder;
 document.getElementById("viewCalendarBtn").onclick=showCalendar;
 document.getElementById("backFromCalendar").onclick=hideCalendar;
 document.getElementById("previousMonthBtn").onclick=()=>changeCalendarMonth(-1);
