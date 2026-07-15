@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.2.0</title>
+<title>我们的小账本 v1.2.1</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -187,7 +187,7 @@ linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
 .statisticsCategoryList{display:grid;gap:2px}
 .statisticsCategoryItem{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px;border-top:1px solid rgba(137,174,187,.18)}
 .statisticsCategoryLabel{display:flex;align-items:center;gap:8px;min-width:0;color:#416879;font-size:15px}
-.statisticsColorDot{width:8px;height:8px;flex:0 0 auto;border-radius:50%}
+.statisticsColorDot{width:10px;height:10px;flex:0 0 auto;border-radius:50%}
 .statisticsCategoryPercent{flex:0 0 auto;font-size:14px;font-weight:700;color:#2E6F92}
 .statisticsEmpty{display:grid;justify-items:center;gap:8px;padding:22px 10px 16px;text-align:center;color:#7897a4;line-height:1.55}
 .statisticsEmptyIcon{font-size:28px}
@@ -282,7 +282,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.2.0</h2>
+<h2>我们的小账本 · v1.2.1</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -876,7 +876,24 @@ function calculateMonthlySummary(){
  return monthlySummary;
 }
 
-const STATISTICS_COLORS=["#73b9c8","#8dc7a7","#9eb8d5","#d2b38a","#a8b9c6","#c9a6bd","#9bbfae","#d4abb0","#8bb6c2"];
+const STATISTICS_CATEGORY_COLORS={
+ "🍜 吃饭":"#d99a62",
+ "🛍️ 购物":"#6d9fc4",
+ "🚗 出行":"#79ad8c",
+ "🏠 住房":"#9b8bc0",
+ "📚 教育":"#c9aa55",
+ "🎮 娱乐":"#d8847b",
+ "🎁 人情":"#d39ab5",
+ "🏥 医疗":"#69adbc",
+ "📦 其它":"#98a3a8"
+};
+
+// 返回指定支出一级分类的固定统计颜色
+// 输入参数：category，支出一级分类文字
+// 返回结果：分类固定颜色值，未匹配的历史分类使用中性灰
+function getStatisticsCategoryColor(category){
+ return STATISTICS_CATEGORY_COLORS[category]||"#98a3a8";
+}
 
 // 汇总当前自然月各支出一级分类的金额，兼容没有 type 字段的旧记录
 // 输入参数：无，使用当前 ledger 数据和系统当前日期
@@ -902,10 +919,10 @@ function calculateMonthlyExpenseCategories(){
 // 返回结果：用于 CSS background 的颜色区间字符串
 function buildExpenseDonutGradient(categories,totalAmount){
  let currentPercent=0;
- return categories.map((category,index)=>{
+ return categories.map(category=>{
    const startPercent=currentPercent;
    currentPercent+=category.amount/totalAmount*100;
-   const color=STATISTICS_COLORS[index%STATISTICS_COLORS.length];
+   const color=getStatisticsCategoryColor(category.category);
    return `${color} ${startPercent}% ${currentPercent}%`;
  }).join(",");
 }
@@ -928,14 +945,14 @@ function renderExpenseStatistics(){
  donut.innerHTML=`<div class="statisticsDonutCenter"><strong>${formatBudgetAmount(totalAmount)}</strong><span>本月支出</span></div>`;
  const categoryList=document.createElement("div");
  categoryList.className="statisticsCategoryList";
- categories.forEach((category,index)=>{
+ categories.forEach(category=>{
    const categoryItem=document.createElement("div");
    categoryItem.className="statisticsCategoryItem";
    const categoryLabel=document.createElement("span");
    categoryLabel.className="statisticsCategoryLabel";
    const colorDot=document.createElement("i");
    colorDot.className="statisticsColorDot";
-   colorDot.style.background=STATISTICS_COLORS[index%STATISTICS_COLORS.length];
+   colorDot.style.background=getStatisticsCategoryColor(category.category);
    const categoryName=document.createElement("span");
    categoryName.textContent=category.category;
    const categoryPercent=document.createElement("strong");
