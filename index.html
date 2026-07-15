@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.3.1</title>
+<title>我们的小账本 v1.3.2</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -180,7 +180,7 @@ linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
 .statisticsSection{display:grid;gap:16px;padding:16px;border:1px solid rgba(255,255,255,.74);border-radius:20px;background:rgba(255,255,255,.48);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
 .statisticsSectionHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .statisticsSection h3{margin:0;font-size:18px}
-.statisticsMartyBtn{display:grid;place-items:center;width:34px;height:34px;padding:0;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:16px}
+.statisticsMartyBtn,.statisticsPickerBtn{display:grid;place-items:center;width:34px;height:34px;padding:0;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:16px}
 .statisticsMartyNotice{margin:-7px 0 1px;font-size:13px;color:#7897a4;white-space:pre-line}
 .statisticsDonut{display:grid;place-items:center;width:min(52vw,190px);aspect-ratio:1;margin:0 auto;border-radius:50%;background:rgba(220,240,244,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.76),0 12px 26px rgba(82,124,143,.1)}
 .statisticsDonutCenter{display:grid;place-items:center;align-content:center;width:62%;aspect-ratio:1;padding:10px;border-radius:50%;background:rgba(250,254,255,.9);text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.84)}
@@ -292,7 +292,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.3.1</h2>
+<h2>我们的小账本 · v1.3.2</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -368,8 +368,7 @@ h2{font-size:23px}
 </div>
 <div class="statisticsContent">
 <section class="statisticsSection">
-<div class="statisticsSectionHeader"><h3 id="expenseCompositionTitle">🌊 本月支出组成</h3><button class="statisticsMartyBtn" id="showMartyPlaceholder" title="Marty 留言" aria-label="Marty 留言">📖</button></div>
-<div class="statisticsMartyNotice" id="statisticsMartyNotice" style="display:none" aria-live="polite"></div>
+<div class="statisticsSectionHeader"><h3 id="expenseCompositionTitle">🌊 本月支出组成</h3><button class="statisticsPickerBtn" id="openStatisticsPicker" title="选择统计月份" aria-label="选择统计月份">📅</button></div>
 <div id="expenseStatistics"></div>
 </section>
 <section class="statisticsSection">
@@ -378,6 +377,15 @@ h2{font-size:23px}
 <div class="statisticsTrendDetails" id="trendPointDetails" style="display:none" aria-live="polite"><span id="trendPointDate"></span><strong id="trendPointAmount"></strong></div>
 <div id="expenseTrend"></div>
 </section>
+</div>
+
+<div class="calendarPickerMask" id="statisticsPickerMask" style="display:none">
+<div class="calendarPicker">
+<div class="calendarPickerHeader"><h3>选择年月</h3><button class="calendarPickerClose" id="closeStatisticsPicker">×</button></div>
+<div class="pickerYearToolbar"><button id="previousStatisticsPickerYear">‹</button><span id="statisticsPickerYearLabel"></span><button id="nextStatisticsPickerYear">›</button></div>
+<div class="pickerYearChoices" id="statisticsYearChoices"></div>
+<div class="pickerMonthChoices" id="statisticsMonthChoices"></div>
+</div>
 </div>
 </div>
 
@@ -441,6 +449,9 @@ let calendarMonthDate=new Date(new Date().getFullYear(),new Date().getMonth(),1)
 let selectedCalendarDate=formatCalendarDateKey(new Date());
 let calendarPickerYear=calendarMonthDate.getFullYear();
 let calendarPickerStartYear=calendarPickerYear-2;
+let statisticsMonthDate=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+let statisticsPickerYear=statisticsMonthDate.getFullYear();
+let statisticsPickerStartYear=statisticsPickerYear-2;
 const INCOME_CATEGORIES=["💼 工资","🧑‍💻 兼职","🧧 红包","↩️ 退款","📈 投资","♻️ 出二手","💰 其它"];
 const EXPENSE_CATEGORIES={
  "🍜 吃饭":["🌅 早餐","🍱 中餐","🍽️ 晚餐","🍪 零食","🥬 买菜","🍎 水果","🌙 夜宵","🍜 其它"],
@@ -756,35 +767,51 @@ function changeCalendarMonth(monthOffset){
  renderCalendar();
 }
 
-// 渲染年月选择层中的六年网格和月份选项
-// 输入参数：无，使用当前 calendarPickerYear、calendarPickerStartYear 和 calendarMonthDate 状态
-// 返回结果：无，直接更新年份与月份选择区域
-function renderCalendarPicker(){
- const yearChoices=document.getElementById("calendarYearChoices");
- const monthChoices=document.getElementById("calendarMonthChoices");
+// 渲染可复用的年月选择器年份网格与月份选项
+// 输入参数：pickerOptions，包含选择器元素 ID、当前年月和选择回调的配置对象
+// 返回结果：无，直接更新对应选择器中的年份与月份按钮
+function renderMonthPickerOptions(pickerOptions){
+ const yearChoices=document.getElementById(pickerOptions.yearChoicesId);
+ const monthChoices=document.getElementById(pickerOptions.monthChoicesId);
  const currentYear=new Date().getFullYear();
- document.getElementById("calendarPickerYearLabel").textContent=calendarPickerStartYear+" - "+(calendarPickerStartYear+5);
+ document.getElementById(pickerOptions.yearLabelId).textContent=pickerOptions.pickerStartYear+" - "+(pickerOptions.pickerStartYear+5);
  yearChoices.innerHTML="";
  monthChoices.innerHTML="";
- for(let year=calendarPickerStartYear;year<calendarPickerStartYear+6;year++){
+ for(let year=pickerOptions.pickerStartYear;year<pickerOptions.pickerStartYear+6;year++){
    const yearButton=document.createElement("button");
    yearButton.type="button";
    yearButton.textContent=year;
-   yearButton.className=(year===calendarPickerYear?"selected ":"")+(year===currentYear?"current":"");
-   yearButton.onclick=()=>{
-     calendarPickerYear=year;
-     renderCalendarPicker();
-   };
+   yearButton.className=(year===pickerOptions.pickerYear?"selected ":"")+(year===currentYear?"current":"");
+   yearButton.onclick=()=>pickerOptions.onSelectYear(year);
    yearChoices.appendChild(yearButton);
  }
  for(let month=0;month<12;month++){
    const monthButton=document.createElement("button");
    monthButton.type="button";
    monthButton.textContent=(month+1)+"月";
-   monthButton.className=calendarMonthDate.getFullYear()===calendarPickerYear&&calendarMonthDate.getMonth()===month?"selected":"";
-   monthButton.onclick=()=>selectCalendarMonth(month);
+   monthButton.className=pickerOptions.currentMonthDate.getFullYear()===pickerOptions.pickerYear&&pickerOptions.currentMonthDate.getMonth()===month?"selected":"";
+   monthButton.onclick=()=>pickerOptions.onSelectMonth(month);
    monthChoices.appendChild(monthButton);
  }
+}
+
+// 渲染 Calendar 年月选择层中的六年网格和月份选项
+// 输入参数：无，使用当前 calendarPickerYear、calendarPickerStartYear 和 calendarMonthDate 状态
+// 返回结果：无，直接更新 Calendar 选择器
+function renderCalendarPicker(){
+ renderMonthPickerOptions({
+   yearChoicesId:"calendarYearChoices",
+   monthChoicesId:"calendarMonthChoices",
+   yearLabelId:"calendarPickerYearLabel",
+   pickerYear:calendarPickerYear,
+   pickerStartYear:calendarPickerStartYear,
+   currentMonthDate:calendarMonthDate,
+   onSelectYear:year=>{
+     calendarPickerYear=year;
+     renderCalendarPicker();
+   },
+   onSelectMonth:selectCalendarMonth
+ });
 }
 
 // 打开年月快速选择层，并以当前查看年份附近的六年区间作为初始选项
@@ -820,6 +847,60 @@ function selectCalendarMonth(month){
  selectedCalendarDate=formatCalendarDateKey(calendarMonthDate);
  hideCalendarPicker();
  renderCalendar();
+}
+
+// 渲染 Statistics 专用年月选择层中的年份和月份选项
+// 输入参数：无，使用 statisticsPickerYear、statisticsPickerStartYear 和 statisticsMonthDate 状态
+// 返回结果：无，直接更新 Statistics 年月选择器
+function renderStatisticsPicker(){
+ renderMonthPickerOptions({
+   yearChoicesId:"statisticsYearChoices",
+   monthChoicesId:"statisticsMonthChoices",
+   yearLabelId:"statisticsPickerYearLabel",
+   pickerYear:statisticsPickerYear,
+   pickerStartYear:statisticsPickerStartYear,
+   currentMonthDate:statisticsMonthDate,
+   onSelectYear:year=>{
+     statisticsPickerYear=year;
+     renderStatisticsPicker();
+   },
+   onSelectMonth:selectStatisticsMonth
+ });
+}
+
+// 打开 Statistics 年月选择器，并定位到当前统计月份所在的年份区间
+// 输入参数：无
+// 返回结果：无，显示 Statistics 年月选择器
+function showStatisticsPicker(){
+ statisticsPickerYear=statisticsMonthDate.getFullYear();
+ statisticsPickerStartYear=statisticsPickerYear-2;
+ renderStatisticsPicker();
+ document.getElementById("statisticsPickerMask").style.display="grid";
+}
+
+// 关闭 Statistics 年月选择器
+// 输入参数：无
+// 返回结果：无，隐藏 Statistics 年月选择器
+function hideStatisticsPicker(){
+ document.getElementById("statisticsPickerMask").style.display="none";
+}
+
+// 切换 Statistics 年月选择器中的六年年份区间
+// 输入参数：yearOffset，年份区间偏移量，-1 为前六年，1 为后六年
+// 返回结果：无，刷新 Statistics 年份与月份选项
+function changeStatisticsPickerYear(yearOffset){
+ statisticsPickerStartYear+=yearOffset*6;
+ renderStatisticsPicker();
+}
+
+// 选择统计月份后刷新 Statistics 页面所有模块
+// 输入参数：month，0 到 11 的月份索引
+// 返回结果：无，更新统计月份、关闭选择器并刷新 Statistics 页面
+function selectStatisticsMonth(month){
+ statisticsMonthDate=new Date(statisticsPickerYear,month,1);
+ selectedTrendDay=null;
+ hideStatisticsPicker();
+ renderStatistics();
 }
 
 // 返回当前月份并自动选中今天
@@ -914,15 +995,14 @@ function getStatisticsCategoryColor(category){
  return STATISTICS_CATEGORY_COLORS[category]||"#98a3a8";
 }
 
-// 汇总当前自然月各支出一级分类的金额，兼容没有 type 字段的旧记录
-// 输入参数：无，使用当前 ledger 数据和系统当前日期
+// 汇总当前统计月份各支出一级分类的金额，兼容没有 type 字段的旧记录
+// 输入参数：无，使用当前 ledger 数据和 statisticsMonthDate 状态
 // 返回结果：按金额从高到低排列的分类金额数组
 function calculateMonthlyExpenseCategories(){
- const now=new Date();
  const categoryAmounts={};
  ledger.forEach(record=>{
    const recordDate=parseRecordTime(record.time);
-   if(recordDate.getFullYear()!==now.getFullYear()||recordDate.getMonth()!==now.getMonth())return;
+   if(recordDate.getFullYear()!==statisticsMonthDate.getFullYear()||recordDate.getMonth()!==statisticsMonthDate.getMonth())return;
    const classification=getRecordClassification(record);
    if(isIncomeCategory(classification.type))return;
    const category=classification.category||"📦 其它";
@@ -933,27 +1013,26 @@ function calculateMonthlyExpenseCategories(){
    .sort((firstCategory,secondCategory)=>secondCategory.amount-firstCategory.amount);
 }
 
-// 汇总当前自然月每天的支出金额，未产生支出的日期保留为 0
-// 输入参数：无，使用当前 ledger 数据和系统当前日期
-// 返回结果：当前月每日支出金额数组，索引 0 对应当月 1 日
+// 汇总当前统计月份每天的支出金额，未产生支出的日期保留为 0
+// 输入参数：无，使用当前 ledger 数据和 statisticsMonthDate 状态
+// 返回结果：统计月份每日支出金额数组，索引 0 对应当月 1 日
 function calculateMonthlyDailyExpenses(){
- const now=new Date();
- const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+ const daysInMonth=new Date(statisticsMonthDate.getFullYear(),statisticsMonthDate.getMonth()+1,0).getDate();
  const dailyExpenses=Array(daysInMonth).fill(0);
  ledger.forEach(record=>{
    const recordDate=parseRecordTime(record.time);
-   if(recordDate.getFullYear()!==now.getFullYear()||recordDate.getMonth()!==now.getMonth())return;
+   if(recordDate.getFullYear()!==statisticsMonthDate.getFullYear()||recordDate.getMonth()!==statisticsMonthDate.getMonth())return;
    if(isIncomeCategory(getRecordClassification(record).type))return;
    dailyExpenses[recordDate.getDate()-1]+=Number(record.amount)||0;
  });
  return dailyExpenses;
 }
 
-// 更新 Statistics 页面中与当前统计月份对应的模块标题
-// 输入参数：无，使用系统当前日期
+// 更新 Statistics 页面中与所选统计月份对应的模块标题
+// 输入参数：无，使用 statisticsMonthDate 状态
 // 返回结果：无，直接更新两个 Statistics 模块标题
 function renderStatisticsMonthTitles(){
- const currentMonth=new Date().getMonth()+1;
+ const currentMonth=statisticsMonthDate.getMonth()+1;
  document.getElementById("expenseCompositionTitle").textContent=`🌊 ${currentMonth}月支出组成`;
  document.getElementById("expenseTrendTitle").textContent=`📈 ${currentMonth}月消费趋势`;
 }
@@ -981,7 +1060,7 @@ function createTrendChartCoordinates(dailyExpenses,chartWidth,chartHeight){
 }
 
 // 根据已选择的趋势日期显示对应的日期与支出金额
-// 输入参数：dailyExpenses，当前月每日支出金额数组
+// 输入参数：dailyExpenses，统计月份每日支出金额数组
 // 返回结果：无，直接更新趋势图上方的数据点信息区域
 function renderTrendPointDetails(dailyExpenses){
  const details=document.getElementById("trendPointDetails");
@@ -989,7 +1068,7 @@ function renderTrendPointDetails(dailyExpenses){
    details.style.display="none";
    return;
  }
- const currentMonth=new Date().getMonth()+1;
+ const currentMonth=statisticsMonthDate.getMonth()+1;
  document.getElementById("trendPointDate").textContent=`${currentMonth}月${selectedTrendDay}日`;
  document.getElementById("trendPointAmount").textContent=`支出 ${formatBudgetAmount(dailyExpenses[selectedTrendDay-1])}`;
  details.style.display="flex";
@@ -1318,12 +1397,19 @@ function renderRecentRecords(records,container){
  });
 }
 
-function render(){
- renderMonthlySummary();
- renderBudget();
+// 刷新 Statistics 页面当前所选月份的标题、支出组成和消费趋势
+// 输入参数：无，使用 statisticsMonthDate 和 ledger 数据
+// 返回结果：无，直接更新 Statistics 页面中的所有统计模块
+function renderStatistics(){
  renderStatisticsMonthTitles();
  renderExpenseStatistics();
  renderExpenseTrend();
+}
+
+function render(){
+ renderMonthlySummary();
+ renderBudget();
+ renderStatistics();
  renderRecentRecords(getRecentRecords(ledger),document.getElementById("recentList"));
  renderRecordList(ledger,document.getElementById("fullLedgerList"));
  renderCalendar();
@@ -1343,20 +1429,16 @@ function hideFullLedger(){
  document.getElementById("fullLedgerView").style.display="none";
 }
 
-// 打开 Statistics 全屏页面并刷新本月支出分类统计
+// 打开 Statistics 全屏页面并刷新当前所选月份的统计数据
 // 输入参数：无
 // 返回结果：无，显示 Statistics 页面
 function showStatistics(){
  document.getElementById("statisticsView").style.display="block";
  selectedTrendDay=null;
- document.getElementById("statisticsMartyNotice").style.display="none";
- document.getElementById("statisticsMartyNotice").textContent="";
  clearTimeout(trendMartyNoticeTimer);
  document.getElementById("trendMartyNotice").style.display="none";
  document.getElementById("trendMartyNotice").textContent="";
- renderStatisticsMonthTitles();
- renderExpenseStatistics();
- renderExpenseTrend();
+ renderStatistics();
 }
 
 // 关闭 Statistics 全屏页面并返回首页
@@ -1364,15 +1446,6 @@ function showStatistics(){
 // 返回结果：无，隐藏 Statistics 页面
 function hideStatistics(){
  document.getElementById("statisticsView").style.display="none";
-}
-
-// 显示 Marty 留言功能的临时提示，不保存任何数据
-// 输入参数：无
-// 返回结果：无，更新 Statistics 页面中的提示文字
-function showMartyPlaceholder(){
- const martyNotice=document.getElementById("statisticsMartyNotice");
- martyNotice.textContent="🤍 Marty 正在准备留言……";
- martyNotice.style.display="block";
 }
 
 // 显示消费趋势模块中 Marty 留言功能的临时提示
@@ -1436,7 +1509,10 @@ document.getElementById("viewLedgerBtn").onclick=showFullLedger;
 document.getElementById("backToHome").onclick=hideFullLedger;
 document.getElementById("viewStatisticsBtn").onclick=showStatistics;
 document.getElementById("backFromStatistics").onclick=hideStatistics;
-document.getElementById("showMartyPlaceholder").onclick=showMartyPlaceholder;
+document.getElementById("openStatisticsPicker").onclick=showStatisticsPicker;
+document.getElementById("closeStatisticsPicker").onclick=hideStatisticsPicker;
+document.getElementById("previousStatisticsPickerYear").onclick=()=>changeStatisticsPickerYear(-1);
+document.getElementById("nextStatisticsPickerYear").onclick=()=>changeStatisticsPickerYear(1);
 document.getElementById("showTrendMartyPlaceholder").onclick=showTrendMartyPlaceholder;
 document.getElementById("viewCalendarBtn").onclick=showCalendar;
 document.getElementById("backFromCalendar").onclick=hideCalendar;
