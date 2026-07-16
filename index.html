@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.4.0</title>
+<title>我们的小账本 v1.4.1</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -294,7 +294,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.4.0</h2>
+<h2>我们的小账本 · v1.4.1</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -940,7 +940,7 @@ function sortRecordsByNewest(records){
  return [...records].sort((firstRecord,secondRecord)=>parseRecordTime(secondRecord.time)-parseRecordTime(firstRecord.time));
 }
 
-const LEDGER_CSV_HEADERS=["日期","类型","分类","金额","备注"];
+const LEDGER_CSV_HEADERS=["日期","类型","一级分类","二级分类","金额","备注"];
 
 // 移除分类标签前的图标，保留用于 CSV 的中文分类名称
 // 输入参数：label，包含图标和文字的分类标签
@@ -956,12 +956,15 @@ function getExportType(record){
  return isIncomeCategory(getRecordClassification(record).type)?"收入":"支出";
 }
 
-// 获取记录导出时使用的完整分类文字
+// 获取记录导出时使用的一级分类和二级分类文字
 // 输入参数：record，LocalStorage 中的一条账本记录
-// 返回结果：一级分类与具体项目组合后的 CSV 分类文字
-function getExportCategory(record){
+// 返回结果：包含一级分类和二级分类的 CSV 分类对象
+function getExportCategories(record){
  const classification=getRecordClassification(record);
- return [getExportLabel(classification.category),getExportLabel(classification.subcategory)].filter(Boolean).join(" / ");
+ return {
+   primaryCategory:getExportLabel(classification.category),
+   secondaryCategory:getExportLabel(classification.subcategory)
+ };
 }
 
 // 转义 CSV 单元格中的引号、逗号和换行内容
@@ -978,13 +981,17 @@ function escapeCsvValue(value){
 function createLedgerCsv(records){
  const recordRows=[...records]
    .sort((firstRecord,secondRecord)=>parseRecordTime(firstRecord.time)-parseRecordTime(secondRecord.time))
-   .map(record=>[
-     formatCalendarDateKey(parseRecordTime(record.time)),
-     getExportType(record),
-     getExportCategory(record),
-     String(Number(record.amount)||0),
-     record.note||""
-   ].map(escapeCsvValue).join(","));
+   .map(record=>{
+     const categories=getExportCategories(record);
+     return [
+       formatCalendarDateKey(parseRecordTime(record.time)),
+       getExportType(record),
+       categories.primaryCategory,
+       categories.secondaryCategory,
+       String(Number(record.amount)||0),
+       record.note||""
+     ].map(escapeCsvValue).join(",");
+   });
  return "\uFEFF"+[LEDGER_CSV_HEADERS.map(escapeCsvValue).join(","),...recordRows].join("\r\n");
 }
 
