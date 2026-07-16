@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.3.5</title>
+<title>我们的小账本 v1.4.0</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -294,7 +294,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.3.5</h2>
+<h2>我们的小账本 · v1.4.0</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -323,6 +323,7 @@ h2{font-size:23px}
 
 <button class="viewLedgerBtn" id="viewLedgerBtn">📖 查看完整账本</button>
 <button class="viewLedgerBtn" id="viewCalendarBtn">📅 查看日历</button>
+<button class="viewLedgerBtn" id="exportDataBtn">📤 导出数据</button>
 
 <label>金额</label>
 <input id="amount" inputmode="decimal">
@@ -939,6 +940,70 @@ function sortRecordsByNewest(records){
  return [...records].sort((firstRecord,secondRecord)=>parseRecordTime(secondRecord.time)-parseRecordTime(firstRecord.time));
 }
 
+const LEDGER_CSV_HEADERS=["日期","类型","分类","金额","备注"];
+
+// 移除分类标签前的图标，保留用于 CSV 的中文分类名称
+// 输入参数：label，包含图标和文字的分类标签
+// 返回结果：移除图标后的分类文字
+function getExportLabel(label){
+ return String(label||"").replace(/^\S+\s+/,"");
+}
+
+// 获取记录导出时使用的收入或支出类型文字
+// 输入参数：record，LocalStorage 中的一条账本记录
+// 返回结果：用于 CSV 的收入或支出文字
+function getExportType(record){
+ return isIncomeCategory(getRecordClassification(record).type)?"收入":"支出";
+}
+
+// 获取记录导出时使用的完整分类文字
+// 输入参数：record，LocalStorage 中的一条账本记录
+// 返回结果：一级分类与具体项目组合后的 CSV 分类文字
+function getExportCategory(record){
+ const classification=getRecordClassification(record);
+ return [getExportLabel(classification.category),getExportLabel(classification.subcategory)].filter(Boolean).join(" / ");
+}
+
+// 转义 CSV 单元格中的引号、逗号和换行内容
+// 输入参数：value，需要写入 CSV 的单元格内容
+// 返回结果：符合 CSV 格式的单元格字符串
+function escapeCsvValue(value){
+ const text=String(value??"");
+ return /[",\r\n]/.test(text)?`"${text.replace(/"/g,'""')}"`:text;
+}
+
+// 生成固定字段顺序的账本 CSV 内容，按记录日期从早到晚排列
+// 输入参数：records，需要导出的账本记录数组
+// 返回结果：带 UTF-8 BOM 的 CSV 文件文本
+function createLedgerCsv(records){
+ const recordRows=[...records]
+   .sort((firstRecord,secondRecord)=>parseRecordTime(firstRecord.time)-parseRecordTime(secondRecord.time))
+   .map(record=>[
+     formatCalendarDateKey(parseRecordTime(record.time)),
+     getExportType(record),
+     getExportCategory(record),
+     String(Number(record.amount)||0),
+     record.note||""
+   ].map(escapeCsvValue).join(","));
+ return "\uFEFF"+[LEDGER_CSV_HEADERS.map(escapeCsvValue).join(","),...recordRows].join("\r\n");
+}
+
+// 下载当前账本记录的 CSV 文件，不包含预算和其它页面数据
+// 输入参数：无，使用当前 ledger 数据和系统日期
+// 返回结果：无，触发浏览器下载 CSV 文件
+function exportLedgerData(){
+ const exportDate=formatCalendarDateKey(new Date());
+ const csvBlob=new Blob([createLedgerCsv(ledger)],{type:"text/csv;charset=utf-8;"});
+ const downloadUrl=URL.createObjectURL(csvBlob);
+ const downloadLink=document.createElement("a");
+ downloadLink.href=downloadUrl;
+ downloadLink.download=`我们的小账本_记账数据_${exportDate}.csv`;
+ document.body.appendChild(downloadLink);
+ downloadLink.click();
+ downloadLink.remove();
+ setTimeout(()=>URL.revokeObjectURL(downloadUrl),1000);
+}
+
 // 按日期将账本记录分组，保持记录从新到旧展示
 // 输入参数：records，账本记录数组
 // 返回结果：包含标题和记录列表的分组数组
@@ -1538,6 +1603,7 @@ function saveBudgetSettings(){
 
 document.getElementById("viewLedgerBtn").onclick=showFullLedger;
 document.getElementById("backToHome").onclick=hideFullLedger;
+document.getElementById("exportDataBtn").onclick=exportLedgerData;
 document.getElementById("viewStatisticsBtn").onclick=showStatistics;
 document.getElementById("backFromStatistics").onclick=hideStatistics;
 document.getElementById("openStatisticsPicker").onclick=showStatisticsPicker;
