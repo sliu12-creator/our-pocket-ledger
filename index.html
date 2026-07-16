@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.3.2</title>
+<title>我们的小账本 v1.3.3</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -292,7 +292,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.3.2</h2>
+<h2>我们的小账本 · v1.3.3</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -1059,6 +1059,20 @@ function createTrendChartCoordinates(dailyExpenses,chartWidth,chartHeight){
  return {points:points,baseY:chartHeight-chartPadding.bottom,chartPadding:chartPadding};
 }
 
+// 根据趋势图点击位置找到横向距离最近的日期
+// 输入参数：event，点击事件；svg，趋势图 SVG 元素；points，趋势图日期坐标数组
+// 返回结果：距离点击位置最近的日期序号，从 1 开始
+function getNearestTrendDay(event,svg,points){
+ const svgBounds=svg.getBoundingClientRect();
+ const viewBox=svg.viewBox.baseVal;
+ const clickX=(event.clientX-svgBounds.left)/svgBounds.width*viewBox.width;
+ let nearestIndex=0;
+ points.forEach((point,index)=>{
+   if(Math.abs(point.x-clickX)<Math.abs(points[nearestIndex].x-clickX))nearestIndex=index;
+ });
+ return nearestIndex+1;
+}
+
 // 根据已选择的趋势日期显示对应的日期与支出金额
 // 输入参数：dailyExpenses，统计月份每日支出金额数组
 // 返回结果：无，直接更新趋势图上方的数据点信息区域
@@ -1074,8 +1088,8 @@ function renderTrendPointDetails(dailyExpenses){
  details.style.display="flex";
 }
 
-// 创建带日期标签的消费趋势 SVG 折线图
-// 输入参数：dailyExpenses，当前月每日支出金额数组
+// 创建带日期标签和整块点击区域的消费趋势 SVG 折线图
+// 输入参数：dailyExpenses，统计月份每日支出金额数组
 // 返回结果：可直接插入页面的 SVG 图表元素
 function createExpenseTrendSvg(dailyExpenses){
  const chartWidth=320;
@@ -1094,29 +1108,17 @@ function createExpenseTrendSvg(dailyExpenses){
  const baseline=createSvgElement("line",{x1:coordinates.chartPadding.left,y1:coordinates.baseY,x2:chartWidth-coordinates.chartPadding.right,y2:coordinates.baseY,class:"statisticsTrendBaseline"});
  const area=createSvgElement("path",{d:`M ${firstPoint.x} ${coordinates.baseY} L ${pointText} L ${lastPoint.x} ${coordinates.baseY} Z`,class:"statisticsTrendArea"});
  const line=createSvgElement("polyline",{points:pointText,class:"statisticsTrendLine"});
- svg.append(baseline,area,line);
+ const interactionLayer=createSvgElement("rect",{x:coordinates.chartPadding.left,y:coordinates.chartPadding.top,width:chartWidth-coordinates.chartPadding.left-coordinates.chartPadding.right,height:coordinates.baseY-coordinates.chartPadding.top,fill:"#ffffff","fill-opacity":0,"pointer-events":"all"});
+ interactionLayer.style.cursor="pointer";
+ interactionLayer.addEventListener("click",event=>{
+   selectedTrendDay=getNearestTrendDay(event,svg,coordinates.points);
+   renderExpenseTrend();
+ });
+ svg.append(baseline,area,line,interactionLayer);
  if(selectedTrendDay&&coordinates.points[selectedTrendDay-1]){
    const selectedPoint=coordinates.points[selectedTrendDay-1];
    svg.appendChild(createSvgElement("circle",{cx:selectedPoint.x,cy:selectedPoint.y,r:4.5,fill:"#f8feff",stroke:"#69b7c8","stroke-width":2}));
  }
- dailyExpenses.forEach((amount,index)=>{
-   const point=coordinates.points[index];
-   const touchTarget=createSvgElement("circle",{cx:point.x,cy:point.y,r:6,fill:"#ffffff","fill-opacity":0});
-   touchTarget.setAttribute("tabindex","0");
-   touchTarget.setAttribute("role","button");
-   touchTarget.setAttribute("aria-label",`查看${index+1}日支出`);
-   touchTarget.addEventListener("click",()=>{
-     selectedTrendDay=index+1;
-     renderExpenseTrend();
-   });
-   touchTarget.addEventListener("keydown",event=>{
-     if(event.key!=="Enter"&&event.key!==" ")return;
-     event.preventDefault();
-     selectedTrendDay=index+1;
-     renderExpenseTrend();
-   });
-   svg.appendChild(touchTarget);
- });
  getTrendLabelDays(dailyExpenses.length).forEach(day=>{
    const point=coordinates.points[day-1];
    const textAnchor=day===1?"start":day===dailyExpenses.length?"end":"middle";
