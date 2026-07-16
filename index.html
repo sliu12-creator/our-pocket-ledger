@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.3.4</title>
+<title>我们的小账本 v1.3.5</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -190,6 +190,7 @@ linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
 .statisticsTrendChart{padding-top:2px}
 .statisticsTrendChart svg{display:block;width:100%;height:auto;overflow:visible}
 .statisticsTrendLabel{fill:#7897a4;font-size:11px}
+.statisticsTrendYAxisLabel{fill:#7897a4;font-size:10px}
 .statisticsTrendDetails{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:-7px 0 1px;padding:8px 10px;border:1px solid rgba(255,255,255,.72);border-radius:12px;background:rgba(246,252,253,.48);font-size:13px;color:#7897a4}
 .statisticsTrendDetails strong{color:#2E6F92;font-size:15px}
 .statisticsTrendBaseline{stroke:rgba(121,151,164,.26);stroke-width:1}
@@ -293,7 +294,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.3.4</h2>
+<h2>我们的小账本 · v1.3.5</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -1040,26 +1041,41 @@ function renderStatisticsMonthTitles(){
  document.getElementById("expenseTrendTitle").textContent=`📈 ${currentMonth}月消费趋势`;
 }
 
-// 返回消费趋势图需要展示的简洁日期刻度
-// 输入参数：daysInMonth，当前月的总天数
-// 返回结果：去重后的日期刻度数组
-function getTrendLabelDays(daysInMonth){
- return [...new Set([1,7,14,21,28,daysInMonth].filter(day=>day<=daysInMonth))];
+// 根据图表可用宽度返回不会重叠的日期刻度
+// 输入参数：daysInMonth，统计月份的总天数；maximumTickCount，最多可展示的刻度数量
+// 返回结果：均匀分布的日期刻度数组
+function getTrendLabelDays(daysInMonth,maximumTickCount){
+ if(daysInMonth<=1)return [1];
+ const tickCount=Math.min(daysInMonth,Math.max(2,maximumTickCount));
+ return [...new Set(Array.from({length:tickCount},(_,index)=>Math.round(1+(daysInMonth-1)*index/(tickCount-1))))];
 }
 
 // 计算趋势折线图中每个日期的 SVG 坐标
 // 输入参数：dailyExpenses，每日支出金额数组；chartWidth、chartHeight，SVG 画布尺寸
 // 返回结果：包含坐标、基线和绘图区尺寸的趋势图坐标对象
 function createTrendChartCoordinates(dailyExpenses,chartWidth,chartHeight){
- const chartPadding={left:8,right:8,top:12,bottom:28};
- const maximumExpense=Math.max(...dailyExpenses,1);
+ const chartPadding={left:42,right:22,top:12,bottom:28};
+ const maximumExpense=Math.max(...dailyExpenses);
  const plotWidth=chartWidth-chartPadding.left-chartPadding.right;
  const plotHeight=chartHeight-chartPadding.top-chartPadding.bottom;
  const points=dailyExpenses.map((amount,index)=>({
    x:chartPadding.left+plotWidth*index/(dailyExpenses.length-1),
    y:chartPadding.top+plotHeight*(1-amount/maximumExpense)
  }));
- return {points:points,baseY:chartHeight-chartPadding.bottom,chartPadding:chartPadding};
+ return {points:points,baseY:chartHeight-chartPadding.bottom,chartPadding:chartPadding,plotWidth:plotWidth,maximumExpense:maximumExpense};
+}
+
+// 在趋势图左侧添加最大值、中间值和零值三个金额刻度
+// 输入参数：svg，趋势图 SVG 元素；createSvgElement，SVG 元素创建函数；coordinates，趋势图坐标信息
+// 返回结果：无，直接向趋势图追加金额刻度标签
+function appendTrendYAxisLabels(svg,createSvgElement,coordinates){
+ const labelValues=[coordinates.maximumExpense,coordinates.maximumExpense/2,0];
+ const labelPositions=[coordinates.chartPadding.top,(coordinates.chartPadding.top+coordinates.baseY)/2,coordinates.baseY];
+ labelValues.forEach((value,index)=>{
+   const label=createSvgElement("text",{x:coordinates.chartPadding.left-8,y:labelPositions[index]+3,"text-anchor":"end",class:"statisticsTrendYAxisLabel"});
+   label.textContent=formatBudgetAmount(value);
+   svg.appendChild(label);
+ });
 }
 
 // 根据趋势图点击位置找到横向距离最近的日期
@@ -1118,11 +1134,13 @@ function createExpenseTrendSvg(dailyExpenses){
    renderExpenseTrend();
  });
  svg.append(baseline,area,line,interactionLayer);
+ appendTrendYAxisLabels(svg,createSvgElement,coordinates);
  if(selectedTrendDay&&coordinates.points[selectedTrendDay-1]){
    const selectedPoint=coordinates.points[selectedTrendDay-1];
    svg.appendChild(createSvgElement("circle",{cx:selectedPoint.x,cy:selectedPoint.y,r:4.5,fill:"#f8feff",stroke:"#69b7c8","stroke-width":2}));
  }
- getTrendLabelDays(dailyExpenses.length).forEach(day=>{
+ const maximumTickCount=Math.floor(coordinates.plotWidth/52)+1;
+ getTrendLabelDays(dailyExpenses.length,maximumTickCount).forEach(day=>{
    const point=coordinates.points[day-1];
    const textAnchor=day===1?"start":day===dailyExpenses.length?"end":"middle";
    const label=createSvgElement("text",{x:point.x,y:chartHeight-7,"text-anchor":textAnchor,class:"statisticsTrendLabel"});
