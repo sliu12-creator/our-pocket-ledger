@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.3.3</title>
+<title>我们的小账本 v1.3.4</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -179,6 +179,7 @@ linear-gradient(180deg,#f4fbff 0%,#e7f4f8 44%,#dbeef2 100%);
 .statisticsContent{display:grid;gap:16px;max-width:760px;margin:0 auto}
 .statisticsSection{display:grid;gap:16px;padding:16px;border:1px solid rgba(255,255,255,.74);border-radius:20px;background:rgba(255,255,255,.48);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
 .statisticsSectionHeader{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.statisticsSectionActions{display:flex;flex:0 0 auto;gap:6px}
 .statisticsSection h3{margin:0;font-size:18px}
 .statisticsMartyBtn,.statisticsPickerBtn{display:grid;place-items:center;width:34px;height:34px;padding:0;background:rgba(255,255,255,.64);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);font-size:16px}
 .statisticsMartyNotice{margin:-7px 0 1px;font-size:13px;color:#7897a4;white-space:pre-line}
@@ -292,7 +293,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.3.3</h2>
+<h2>我们的小账本 · v1.3.4</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
 <div class="monthlySummary">
@@ -368,7 +369,8 @@ h2{font-size:23px}
 </div>
 <div class="statisticsContent">
 <section class="statisticsSection">
-<div class="statisticsSectionHeader"><h3 id="expenseCompositionTitle">🌊 本月支出组成</h3><button class="statisticsPickerBtn" id="openStatisticsPicker" title="选择统计月份" aria-label="选择统计月份">📅</button></div>
+<div class="statisticsSectionHeader"><h3 id="expenseCompositionTitle">🌊 本月支出组成</h3><div class="statisticsSectionActions"><button class="statisticsPickerBtn" id="openStatisticsPicker" title="选择统计月份" aria-label="选择统计月份">📅</button><button class="statisticsMartyBtn" id="showExpenseMartyPlaceholder" title="Marty 留言" aria-label="Marty 留言">📖</button></div></div>
+<div class="statisticsMartyNotice" id="expenseMartyNotice" style="display:none" aria-live="polite"></div>
 <div id="expenseStatistics"></div>
 </section>
 <section class="statisticsSection">
@@ -443,7 +445,8 @@ const MSGS=[
 let ledger=JSON.parse(localStorage.getItem(KEY)||"[]");
 let budgets=loadBudgets();
 let editingId=null;
-let trendMartyNoticeTimer=null;
+let martyNoticeTimer=null;
+let activeMartyNotice=null;
 let selectedTrendDay=null;
 let calendarMonthDate=new Date(new Date().getFullYear(),new Date().getMonth(),1);
 let selectedCalendarDate=formatCalendarDateKey(new Date());
@@ -1309,15 +1312,17 @@ function saveCurrentMonthBudget(amount){
  saveBudgets();
 }
 
-// 根据当前预算的每日建议额度返回日历日期状态类
+// 根据预算平均每日额度返回日历日期状态类
 // 输入参数：dateKey，YYYY-MM-DD 日期键；budgetStatus，当前月预算状态
 // 返回结果：日历日期使用的预算状态 class，未设置预算时返回空字符串
 function getCalendarBudgetClass(dateKey,budgetStatus){
  if(!budgetStatus.hasBudget)return "";
  const dayRecords=getRecordsForCalendarDate(ledger,dateKey);
  const dayExpense=calculateRecordSummary(dayRecords).expense;
+ const daysInMonth=new Date(budgetStatus.year,budgetStatus.month,0).getDate();
+ const dailyBudget=budgetStatus.amount/daysInMonth;
  if(dayExpense===0)return " withinBudget";
- return dayExpense>budgetStatus.dailySuggestion?" overBudget":" withinBudget";
+ return dayExpense>dailyBudget?" overBudget":" withinBudget";
 }
 
 // 将结余格式化为带正负号的金额，零结余不显示正负号
@@ -1437,9 +1442,12 @@ function hideFullLedger(){
 function showStatistics(){
  document.getElementById("statisticsView").style.display="block";
  selectedTrendDay=null;
- clearTimeout(trendMartyNoticeTimer);
- document.getElementById("trendMartyNotice").style.display="none";
- document.getElementById("trendMartyNotice").textContent="";
+ clearTimeout(martyNoticeTimer);
+ for(const noticeId of ["expenseMartyNotice","trendMartyNotice"]){
+   document.getElementById(noticeId).style.display="none";
+   document.getElementById(noticeId).textContent="";
+ }
+ activeMartyNotice=null;
  renderStatistics();
 }
 
@@ -1450,16 +1458,19 @@ function hideStatistics(){
  document.getElementById("statisticsView").style.display="none";
 }
 
-// 显示消费趋势模块中 Marty 留言功能的临时提示
-// 输入参数：无
-// 返回结果：无，短暂显示趋势模块中的提示文字
-function showTrendMartyPlaceholder(){
- const trendMartyNotice=document.getElementById("trendMartyNotice");
- clearTimeout(trendMartyNoticeTimer);
- trendMartyNotice.textContent="🤍 Marty\n这个功能正在准备中。🌱";
- trendMartyNotice.style.display="block";
- trendMartyNoticeTimer=setTimeout(()=>{
-   trendMartyNotice.style.display="none";
+// 显示指定 Statistics 模块中 Marty 留言功能的临时提示
+// 输入参数：noticeId，承载提示文字的页面元素 ID
+// 返回结果：无，短暂显示指定模块中的提示文字
+function showMartyPlaceholder(noticeId){
+ const martyNotice=document.getElementById(noticeId);
+ clearTimeout(martyNoticeTimer);
+ if(activeMartyNotice&&activeMartyNotice!==martyNotice)activeMartyNotice.style.display="none";
+ martyNotice.textContent="🤍 Marty\n这个功能正在准备中。🌱";
+ martyNotice.style.display="block";
+ activeMartyNotice=martyNotice;
+ martyNoticeTimer=setTimeout(()=>{
+   martyNotice.style.display="none";
+   activeMartyNotice=null;
  },2400);
 }
 
@@ -1515,7 +1526,8 @@ document.getElementById("openStatisticsPicker").onclick=showStatisticsPicker;
 document.getElementById("closeStatisticsPicker").onclick=hideStatisticsPicker;
 document.getElementById("previousStatisticsPickerYear").onclick=()=>changeStatisticsPickerYear(-1);
 document.getElementById("nextStatisticsPickerYear").onclick=()=>changeStatisticsPickerYear(1);
-document.getElementById("showTrendMartyPlaceholder").onclick=showTrendMartyPlaceholder;
+document.getElementById("showExpenseMartyPlaceholder").onclick=showMartyPlaceholder.bind(null,"expenseMartyNotice");
+document.getElementById("showTrendMartyPlaceholder").onclick=showMartyPlaceholder.bind(null,"trendMartyNotice");
 document.getElementById("viewCalendarBtn").onclick=showCalendar;
 document.getElementById("backFromCalendar").onclick=hideCalendar;
 document.getElementById("previousMonthBtn").onclick=()=>changeCalendarMonth(-1);
