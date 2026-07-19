@@ -113,6 +113,21 @@ padding:14px;
 margin-top:14px;
 color:#4e7180;
 }
+.greetingCard{
+display:flex;
+align-items:center;
+gap:13px;
+margin:0 0 14px;
+padding:14px 15px;
+border:1px solid rgba(255,255,255,.76);
+border-radius:18px;
+background:rgba(239,250,252,.5);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 10px 24px rgba(82,124,143,.08);
+}
+.greetingEmoji{display:grid;place-items:center;flex:0 0 auto;width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.58);font-size:23px;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
+.greetingContent{min-width:0}
+.greetingLabel{display:block;margin-bottom:4px;font-size:13px;font-weight:650;color:#668795}
+.greetingMessage{margin:0;color:#416879;font-size:14px;line-height:1.55;white-space:pre-line}
 .small{font-size:.9em;color:#678}
 .monthlySummary{
 display:grid;
@@ -300,17 +315,13 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.5.0</h2>
+<h2>我们的小账本 · v1.6.0</h2>
 <p class="small">Foundation：本地保存已完成（LocalStorage）</p>
 
-<div class="monthlySummary">
-<div class="summaryHeader"><div class="summaryTitle">🌊 本月小结</div><button class="summaryStatistics" id="viewStatisticsBtn" title="查看统计" aria-label="查看统计">📊</button></div>
-<div class="summaryGrid">
-<div class="summaryItem"><span class="summaryLabel">收入</span><strong class="summaryAmount income" id="monthlyIncome">+ ¥0</strong></div>
-<div class="summaryItem"><span class="summaryLabel">支出</span><strong class="summaryAmount" id="monthlyExpense">- ¥0</strong></div>
-<div class="summaryItem"><span class="summaryLabel">结余</span><strong class="summaryAmount" id="monthlyBalance">¥0</strong></div>
-</div>
-</div>
+<section class="greetingCard" aria-label="每日问候">
+<span class="greetingEmoji" id="greetingEmoji" aria-hidden="true">🌙</span>
+<div class="greetingContent"><span class="greetingLabel">每日问候</span><p class="greetingMessage" id="greetingMessage"></p></div>
+</section>
 
 <div class="monthlyBudget">
 <div class="budgetHeader"><span class="budgetTitle">🌱 本月预算</span><button class="budgetSettings" id="openBudgetSettings" title="设置本月预算" aria-label="设置本月预算">⚙️</button></div>
@@ -320,6 +331,15 @@ h2{font-size:23px}
 </div>
 <div class="budgetProgressRow"><div class="budgetProgressTrack"><div class="budgetProgressBar" id="budgetProgressBar"></div></div><span class="budgetProgressText" id="budgetProgressText">--</span></div>
 <div class="budgetHint" id="budgetHint"></div>
+</div>
+
+<div class="monthlySummary">
+<div class="summaryHeader"><div class="summaryTitle">🌊 本月小结</div><button class="summaryStatistics" id="viewStatisticsBtn" title="查看统计" aria-label="查看统计">📊</button></div>
+<div class="summaryGrid">
+<div class="summaryItem"><span class="summaryLabel">收入</span><strong class="summaryAmount income" id="monthlyIncome">+ ¥0</strong></div>
+<div class="summaryItem"><span class="summaryLabel">支出</span><strong class="summaryAmount" id="monthlyExpense">- ¥0</strong></div>
+<div class="summaryItem"><span class="summaryLabel">结余</span><strong class="summaryAmount" id="monthlyBalance">¥0</strong></div>
+</div>
 </div>
 
 <div class="recentSection">
@@ -467,6 +487,9 @@ h2{font-size:23px}
 </div>
 
 
+<script src="greetingContext.js"></script>
+<script src="greetingSelector.js"></script>
+<script src="greetingService.js"></script>
 <script>
 const KEY="ourLedger_v032";
 const BUDGET_KEY="ourLedger_budget";
@@ -1738,6 +1761,7 @@ function renderStatistics(){
 }
 
 function render(){
+ renderGreeting();
  renderMonthlySummary();
  renderBudget();
  renderStatistics();
