@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我们的小账本 v1.5.0</title>
+<title>我们的小账本 v1.6.1</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -118,16 +118,15 @@ display:flex;
 align-items:center;
 gap:13px;
 margin:0 0 14px;
-padding:14px 15px;
+padding:15px;
 border:1px solid rgba(255,255,255,.76);
 border-radius:18px;
 background:rgba(239,250,252,.5);
 box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 10px 24px rgba(82,124,143,.08);
 }
-.greetingEmoji{display:grid;place-items:center;flex:0 0 auto;width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.58);font-size:23px;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
+.greetingEmoji{display:grid;place-items:center;flex:0 0 auto;width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.58);font-size:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
 .greetingContent{min-width:0}
-.greetingLabel{display:block;margin-bottom:4px;font-size:13px;font-weight:650;color:#668795}
-.greetingMessage{margin:0;color:#416879;font-size:14px;line-height:1.55;white-space:pre-line}
+.greetingMessage{margin:0;color:#416879;font-size:14px;line-height:1.58;white-space:pre-line}
 .small{font-size:.9em;color:#678}
 .monthlySummary{
 display:grid;
@@ -176,7 +175,10 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 .recentAmount{flex:0 0 auto;font-size:17px;font-weight:700;color:#2E6F92;white-space:nowrap}
 .recentAmount.income{color:#4FAF72}
 .recentTime{font-size:13px;color:#7897a4}
-.viewLedgerBtn{margin:0 0 16px;padding:12px;background:rgba(255,255,255,.66);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
+.quickActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 16px}
+.quickAction{display:grid;place-items:center;align-content:center;gap:5px;min-height:74px;padding:10px 6px;border:1px solid rgba(255,255,255,.72);border-radius:16px;background:rgba(255,255,255,.5);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78),0 8px 18px rgba(82,124,143,.07)}
+.quickActionIcon{font-size:22px;line-height:1}
+.quickActionLabel{font-size:13px;font-weight:650;line-height:1}
 .fullLedgerView{
 position:fixed;
 z-index:1100;
@@ -315,12 +317,11 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.6.0</h2>
-<p class="small">Foundation：本地保存已完成（LocalStorage）</p>
+<h2>我们的小账本 · v1.6.1</h2>
 
 <section class="greetingCard" aria-label="每日问候">
 <span class="greetingEmoji" id="greetingEmoji" aria-hidden="true">🌙</span>
-<div class="greetingContent"><span class="greetingLabel">每日问候</span><p class="greetingMessage" id="greetingMessage"></p></div>
+<div class="greetingContent"><p class="greetingMessage" id="greetingMessage"></p></div>
 </section>
 
 <div class="monthlyBudget">
@@ -347,9 +348,11 @@ h2{font-size:23px}
 <div class="recentList" id="recentList"></div>
 </div>
 
-<button class="viewLedgerBtn" id="viewLedgerBtn">📖 查看完整账本</button>
-<button class="viewLedgerBtn" id="viewCalendarBtn">📅 查看日历</button>
-<button class="viewLedgerBtn" id="dataManagementBtn">📁 数据管理</button>
+<div class="quickActions" aria-label="快速入口">
+<button class="quickAction" id="viewLedgerBtn" aria-label="账本"><span class="quickActionIcon" aria-hidden="true">📖</span><span class="quickActionLabel">账本</span></button>
+<button class="quickAction" id="viewCalendarBtn" aria-label="日历"><span class="quickActionIcon" aria-hidden="true">📅</span><span class="quickActionLabel">日历</span></button>
+<button class="quickAction" id="dataManagementBtn" aria-label="数据管理"><span class="quickActionIcon" aria-hidden="true">📁</span><span class="quickActionLabel">数据</span></button>
+</div>
 
 <label>金额</label>
 <input id="amount" inputmode="decimal">
