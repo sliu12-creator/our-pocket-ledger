@@ -114,11 +114,12 @@ margin-top:14px;
 color:#4e7180;
 }
 .greetingCard{
+position:relative;
 display:flex;
 align-items:center;
 gap:13px;
 margin:0 0 14px;
-padding:15px;
+padding:15px 52px 15px 15px;
 border:1px solid rgba(255,255,255,.76);
 border-radius:18px;
 background:rgba(239,250,252,.5);
@@ -127,6 +128,10 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 10px 24px rgba(82,124,143,.08);
 .greetingEmoji{display:grid;place-items:center;flex:0 0 auto;width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.58);font-size:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
 .greetingContent{min-width:0}
 .greetingMessage{margin:0;color:#416879;font-size:14px;line-height:1.58;white-space:pre-line}
+.greetingLetterButton{position:absolute;top:11px;right:11px;display:grid;place-items:center;width:30px;height:30px;padding:0;border-radius:50%;background:rgba(255,255,255,.64);color:#4c7180;font-size:15px;box-shadow:inset 0 1px 0 rgba(255,255,255,.78);transition:background .18s ease,transform .18s ease}
+.greetingLetterButton:hover{background:rgba(255,255,255,.88)}
+.greetingLetterHint{display:flex;align-items:center;gap:5px;width:100%;margin-top:7px;padding:4px 0 0;border-radius:8px;background:transparent;color:#668795;font-size:13px;text-align:left;box-shadow:none;transition:background .18s ease,color .18s ease}
+.greetingLetterHint:hover{background:rgba(255,255,255,.38);color:#416879}
 .small{font-size:.9em;color:#678}
 .monthlySummary{
 display:grid;
@@ -272,8 +277,8 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.68);
 .pickerYearChoices button.selected,.pickerMonthChoices button.selected{background:rgba(143,202,214,.36);color:#244a5d}
 .pickerYearChoices button.current{border:1px solid rgba(106,174,190,.46)}
 .recordDateInput{height:48px;padding:13px 14px;border-radius:16px;font-size:16px;line-height:normal;appearance:none;-webkit-appearance:none}
-#mask,#deleteMask,#budgetMask,#dataManagementMask,#importConfirmMask{z-index:1200!important;padding:0 18px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-#mask>div,#deleteMask>div,#budgetMask>div,#dataManagementMask>div,#importConfirmMask>div{
+#mask,#deleteMask,#budgetMask,#dataManagementMask,#importConfirmMask,#letterMask,#letterCollectionMask{z-index:1200!important;padding:0 18px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#mask>div,#deleteMask>div,#budgetMask>div,#dataManagementMask>div,#importConfirmMask>div,#letterMask>div,#letterCollectionMask>div{
 background:rgba(255,255,255,.78)!important;
 border:1px solid rgba(255,255,255,.82);
 box-shadow:0 22px 48px rgba(49,86,103,.22);
@@ -293,6 +298,18 @@ backdrop-filter:blur(18px) saturate(135%);
 .importConfirmActions{display:flex;gap:10px;margin-top:14px}
 .importConfirmActions button{margin:0}
 #cancelDataManagement,#cancelImportConfirm{background:rgba(255,255,255,.7);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
+.letterModal{width:min(100%,360px);max-height:76vh;margin:12vh auto;padding:18px;overflow-y:auto;border-radius:20px}
+.letterModalHeader{display:flex;align-items:center;gap:9px;margin-bottom:15px}
+.letterModalHeader span{font-size:23px;line-height:1}
+.letterModalHeader h3{margin:0;font-size:18px}
+.letterContent{margin:0;color:#416879;font-size:15px;line-height:1.72;white-space:pre-line}
+.letterModalAction{margin-top:18px}
+.letterCollectionList{display:grid;gap:8px}
+.letterCollectionItem{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 13px;border:1px solid rgba(255,255,255,.72);border-radius:14px;background:rgba(246,252,253,.5);color:#416879;text-align:left;box-shadow:inset 0 1px 0 rgba(255,255,255,.72)}
+.letterCollectionItem:hover{background:rgba(255,255,255,.76)}
+.letterCollectionName{font-size:15px;font-weight:650}
+.letterCollectionDate{font-size:12px;color:#7897a4;white-space:nowrap}
+.letterCollectionDismiss{margin-top:14px;background:rgba(255,255,255,.7);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
 .editDateInput{width:min(100%,180px)!important}
 @media (max-width:520px){
 .wrap{padding-left:14px;padding-right:14px}
@@ -317,11 +334,12 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.6.1</h2>
+<h2>我们的小账本 · v1.7.0</h2>
 
 <section class="greetingCard" aria-label="每日问候">
 <span class="greetingEmoji" id="greetingEmoji" aria-hidden="true">🌙</span>
-<div class="greetingContent"><p class="greetingMessage" id="greetingMessage"></p></div>
+<div class="greetingContent"><p class="greetingMessage" id="greetingMessage"></p><button class="greetingLetterHint" id="openTodayLetterBtn" type="button">💌 今天有一封信。</button></div>
+<button class="greetingLetterButton" id="openLettersBtn" type="button" title="我收到的信" aria-label="我收到的信">💌</button>
 </section>
 
 <div class="monthlyBudget">
@@ -490,6 +508,23 @@ h2{font-size:23px}
 </div>
 
 
+<div id="letterMask" style="display:none;position:fixed;inset:0;background:#0005">
+<div class="letterModal">
+<div class="letterModalHeader"><span aria-hidden="true">💌</span><h3>给宝宝的一封信</h3></div>
+<p class="letterContent" id="letterContent"></p>
+<button class="letterModalAction" id="closeLetterBtn" type="button">收好这封信</button>
+</div>
+</div>
+
+<div id="letterCollectionMask" style="display:none;position:fixed;inset:0;background:#0005">
+<div class="letterModal">
+<div class="letterModalHeader"><span aria-hidden="true">💌</span><h3>我收到的信</h3></div>
+<div class="letterCollectionList" id="letterCollectionList"></div>
+<button class="letterCollectionDismiss" id="closeLetterCollectionBtn" type="button">先放在这里</button>
+</div>
+</div>
+
+<script src="letters.js"></script>
 <script src="greetingContext.js"></script>
 <script src="greetingSelector.js"></script>
 <script src="greetingService.js"></script>
