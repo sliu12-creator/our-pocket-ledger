@@ -1098,14 +1098,18 @@ function parseCsvText(csvText){
  return rows;
 }
 
-// 判断 CSV 中的日期是否为有效的 YYYY-MM-DD 日期
-// 输入参数：dateValue，CSV 日期单元格内容
-// 返回结果：true 表示日期有效，false 表示日期无效
-function isValidImportDate(dateValue){
- const dateParts=String(dateValue).match(/^(\d{4})-(\d{2})-(\d{2})$/);
- if(!dateParts)return false;
- const importedDate=new Date(Number(dateParts[1]),Number(dateParts[2])-1,Number(dateParts[3]));
- return importedDate.getFullYear()===Number(dateParts[1])&&importedDate.getMonth()===Number(dateParts[2])-1&&importedDate.getDate()===Number(dateParts[3]);
+// 将官方 CSV 的日期统一转换为 YYYY-MM-DD，并验证日期是否真实存在
+// 输入参数：dateValue，CSV 日期单元格内容，支持 YYYY-MM-DD、YYYY/MM/DD 和 YYYY/M/D
+// 返回结果：规范化后的 YYYY-MM-DD 日期字符串，格式无效时返回空字符串
+function normalizeImportDate(dateValue){
+ const dateParts=String(dateValue).match(/^(\d{4})(?:-(\d{2})-(\d{2})|\/(\d{1,2})\/(\d{1,2}))$/);
+ if(!dateParts)return "";
+ const year=Number(dateParts[1]);
+ const month=Number(dateParts[2]||dateParts[4]);
+ const day=Number(dateParts[3]||dateParts[5]);
+ const importedDate=new Date(year,month-1,day);
+ if(importedDate.getFullYear()!==year||importedDate.getMonth()!==month-1||importedDate.getDate()!==day)return "";
+ return year+"-"+String(month).padStart(2,"0")+"-"+String(day).padStart(2,"0");
 }
 
 // 根据 CSV 中的中文分类名称找到项目内部使用的完整分类标签
@@ -1125,20 +1129,21 @@ function createImportedRecord(row){
  const primaryText=String(primaryValue).trim();
  const secondaryText=String(secondaryValue).trim();
  const amountText=String(amountValue).trim();
- if(!isValidImportDate(dateText)||!/^\d+(?:\.\d+)?$/.test(amountText))return null;
+ const normalizedDate=normalizeImportDate(dateText);
+ if(!normalizedDate||!/^\d+(?:\.\d+)?$/.test(amountText))return null;
  const amount=Number(amountText);
  if(!Number.isFinite(amount))return null;
  if(typeText==="收入"){
    const incomeCategory=getInternalCategoryLabel(primaryText,INCOME_CATEGORIES);
    if(!incomeCategory||secondaryText)return null;
-   return {id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),amount:amount,type:"💰 收入",category:incomeCategory,subcategory:"",note:String(noteValue||""),time:dateText+" 12:00:00"};
+   return {id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),amount:amount,type:"💰 收入",category:incomeCategory,subcategory:"",note:String(noteValue||""),time:normalizedDate+" 12:00:00"};
  }
  if(typeText!=="支出")return null;
  const expenseCategory=getInternalCategoryLabel(primaryText,Object.keys(EXPENSE_CATEGORIES));
  if(!expenseCategory)return null;
  const expenseSubcategory=secondaryText?getInternalCategoryLabel(secondaryText,EXPENSE_CATEGORIES[expenseCategory]):"";
  if(secondaryText&&!expenseSubcategory)return null;
- return {id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),amount:amount,type:"💸 支出",category:expenseCategory,subcategory:expenseSubcategory,note:String(noteValue||""),time:dateText+" 12:00:00"};
+ return {id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),amount:amount,type:"💸 支出",category:expenseCategory,subcategory:expenseSubcategory,note:String(noteValue||""),time:normalizedDate+" 12:00:00"};
 }
 
 // 严格解析官方 CSV 文件并生成待导入的账本记录
