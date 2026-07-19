@@ -299,17 +299,36 @@ backdrop-filter:blur(18px) saturate(135%);
 .importConfirmActions button{margin:0}
 #cancelDataManagement,#cancelImportConfirm{background:rgba(255,255,255,.7);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
 .letterModal{width:min(100%,360px);max-height:76vh;margin:12vh auto;padding:18px;overflow-y:auto;border-radius:20px}
+.letterReadingModal{background:rgba(255,251,241,.94)!important;border-color:rgba(255,255,255,.92)!important;box-shadow:0 22px 48px rgba(103,82,58,.18),inset 0 1px 0 rgba(255,255,255,.9)!important}
 .letterModalHeader{display:flex;align-items:center;gap:9px;margin-bottom:15px}
 .letterModalHeader span{font-size:23px;line-height:1}
 .letterModalHeader h3{margin:0;font-size:18px}
 .letterContent{margin:0;color:#416879;font-size:15px;line-height:1.72;white-space:pre-line}
-.letterModalAction{margin-top:18px}
+.letterReplyDisplay{margin-top:18px;padding-top:14px;border-top:1px solid rgba(183,151,126,.22);color:#6c5b4b;font-size:14px;line-height:1.65;white-space:pre-line}
+.letterReplyDisplay strong{display:block;margin-bottom:6px;color:#8a5964;font-size:14px}
+.letterModalActions{display:flex;gap:10px;margin-top:18px}
+.letterModalActions button{margin:0}
+.letterReplyButton{background:rgba(255,255,255,.66);color:#745b49;box-shadow:inset 0 1px 0 rgba(255,255,255,.84)}
+.letterCloseButton{background:linear-gradient(180deg,#8fcfdb,#69b7c8)}
+.letterCollectionHeader{justify-content:space-between}
+.letterCollectionHeader .letterModalHeader{margin:0}
+.letterExportAllButton,.letterExportButton{width:auto;padding:7px 9px;border-radius:999px;background:rgba(255,255,255,.68);color:#4c7180;font-size:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
 .letterCollectionList{display:grid;gap:8px}
-.letterCollectionItem{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 13px;border:1px solid rgba(255,255,255,.72);border-radius:14px;background:rgba(246,252,253,.5);color:#416879;text-align:left;box-shadow:inset 0 1px 0 rgba(255,255,255,.72)}
-.letterCollectionItem:hover{background:rgba(255,255,255,.76)}
+.letterCollectionItem{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid rgba(255,255,255,.72);border-radius:14px;background:rgba(246,252,253,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.72)}
+.letterCollectionOpen{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:4px 5px;background:transparent;color:#416879;text-align:left;box-shadow:none}
+.letterCollectionOpen:hover{background:rgba(255,255,255,.46)}
 .letterCollectionName{font-size:15px;font-weight:650}
 .letterCollectionDate{font-size:12px;color:#7897a4;white-space:nowrap}
 .letterCollectionDismiss{margin-top:14px;background:rgba(255,255,255,.7);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.78)}
+.letterReplyMask{z-index:1210!important;padding:0!important;background:transparent!important;pointer-events:none}
+.letterReplySheet{position:absolute;right:0;bottom:0;left:0;padding:18px calc(18px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));border-radius:22px 22px 0 0;background:rgba(255,252,246,.96)!important;box-shadow:0 -14px 34px rgba(70,88,95,.18),inset 0 1px 0 rgba(255,255,255,.9)!important;pointer-events:auto}
+.letterReplySheet h3{margin:0 0 12px;font-size:18px}
+.letterReplySheet textarea{height:116px;margin-bottom:10px;background:rgba(255,255,255,.72)}
+.letterReplyActions{display:flex;gap:10px}
+.letterReplyActions button{margin:0}
+.letterReplyCancel{background:rgba(255,255,255,.72);color:#4c7180;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.letterExportOptions{display:grid;gap:9px}
+.letterExportOptions button{margin:0}
 .editDateInput{width:min(100%,180px)!important}
 @media (max-width:520px){
 .wrap{padding-left:14px;padding-right:14px}
@@ -334,7 +353,7 @@ h2{font-size:23px}
 <body>
 <div class="wrap">
 <div class="card">
-<h2>我们的小账本 · v1.7.0</h2>
+<h2>我们的小账本 · v1.7.1</h2>
 
 <section class="greetingCard" aria-label="每日问候">
 <span class="greetingEmoji" id="greetingEmoji" aria-hidden="true">🌙</span>
@@ -509,18 +528,34 @@ h2{font-size:23px}
 
 
 <div id="letterMask" style="display:none;position:fixed;inset:0;background:#0005">
-<div class="letterModal">
+<div class="letterModal letterReadingModal">
 <div class="letterModalHeader"><span aria-hidden="true">💌</span><h3>给宝宝的一封信</h3></div>
 <p class="letterContent" id="letterContent"></p>
-<button class="letterModalAction" id="closeLetterBtn" type="button">收好这封信</button>
+<div class="letterReplyDisplay" id="letterReplyDisplay" style="display:none"><strong>❤️ 我的回复</strong><span id="letterReplyContent"></span></div>
+<div class="letterModalActions"><button class="letterReplyButton" id="openLetterReplyBtn" type="button">✍ 写给 Marty</button><button class="letterCloseButton" id="closeLetterBtn" type="button">💙 收好这封信</button></div>
 </div>
 </div>
 
 <div id="letterCollectionMask" style="display:none;position:fixed;inset:0;background:#0005">
 <div class="letterModal">
-<div class="letterModalHeader"><span aria-hidden="true">💌</span><h3>我收到的信</h3></div>
+<div class="letterCollectionHeader"><div class="letterModalHeader"><span aria-hidden="true">💌</span><h3>我们的信</h3></div><button class="letterExportAllButton" id="openExportAllLettersBtn" type="button">⬇ 导出全部</button></div>
 <div class="letterCollectionList" id="letterCollectionList"></div>
 <button class="letterCollectionDismiss" id="closeLetterCollectionBtn" type="button">先放在这里</button>
+</div>
+</div>
+
+<div id="letterReplyMask" class="letterReplyMask" style="display:none;position:fixed;inset:0">
+<div class="letterReplySheet">
+<h3>写给 Marty ❤️</h3>
+<textarea id="letterReplyInput" placeholder="想对 Marty 说点什么？&#10;（不用很长，一句话也可以。）"></textarea>
+<div class="letterReplyActions"><button class="letterReplyCancel" id="cancelLetterReplyBtn" type="button">取消</button><button id="saveLetterReplyBtn" type="button">保存</button></div>
+</div>
+</div>
+
+<div id="letterExportMask" style="display:none;position:fixed;inset:0;background:#0005">
+<div class="letterModal">
+<div class="letterModalHeader"><span aria-hidden="true">⬇</span><h3 id="letterExportTitle">导出信件</h3></div>
+<div class="letterExportOptions"><button id="exportLettersPdfBtn" type="button">PDF</button><button id="exportLettersPngBtn" type="button">PNG 长图</button><button id="exportLettersMarkdownBtn" type="button">Markdown (.md)</button><button class="letterCollectionDismiss" id="cancelLetterExportBtn" type="button">取消</button></div>
 </div>
 </div>
 
