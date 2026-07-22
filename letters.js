@@ -58,6 +58,29 @@ function getLetterById(letterId){
  return letters.find(letter=>letter.id===letterId);
 }
 
+// 将 Date 对象转换为信件触发判断使用的 YYYY-MM-DD 日期字符串
+// 输入参数：currentDate，需要判断的 Date 对象
+// 返回结果：本地日期对应的 YYYY-MM-DD 字符串
+function formatLetterTriggerDate(currentDate){
+ return currentDate.getFullYear()+"-"+String(currentDate.getMonth()+1).padStart(2,"0")+"-"+String(currentDate.getDate()).padStart(2,"0");
+}
+
+// 获取只在当天可从首页打开的特殊信件
+// 输入参数：currentDate，可选的当前 Date 对象，默认使用系统当前时间
+// 返回结果：当天触发的信件对象，不存在时返回 undefined
+function getTodayLetter(currentDate=new Date()){
+ const todayDate=formatLetterTriggerDate(currentDate);
+ return letters.find(letter=>letter.date===todayDate);
+}
+
+// 根据当天是否存在特殊信件显示或隐藏首页来信提示
+// 输入参数：currentDate，可选的当前 Date 对象，默认使用系统当前时间
+// 返回结果：无，直接更新首页来信提示的显示状态
+function renderTodayLetterHint(currentDate=new Date()){
+ const todayLetter=getTodayLetter(currentDate);
+ document.getElementById("openTodayLetterBtn").style.display=todayLetter?"flex":"none";
+}
+
 // 获取指定信件的用户回复文字
 // 输入参数：letterId，来信的唯一标识
 // 返回结果：已保存的回复文字，未回复时返回空字符串
@@ -514,7 +537,10 @@ async function exportLetters(format){
  }
 }
 
-document.getElementById("openTodayLetterBtn").onclick=()=>openLetter("day426");
+document.getElementById("openTodayLetterBtn").onclick=()=>{
+ const todayLetter=getTodayLetter();
+ if(todayLetter)openLetter(todayLetter.id);
+};
 document.getElementById("openLettersBtn").onclick=openLetterCollection;
 document.getElementById("closeLetterBtn").onclick=closeLetter;
 document.getElementById("openLetterReplyBtn").onclick=openLetterReplySheet;
@@ -531,3 +557,4 @@ document.getElementById("cancelLetterExportBtn").onclick=closeLetterExportDialog
 document.getElementById("exportLettersPdfBtn").onclick=()=>exportLetters("pdf");
 document.getElementById("exportLettersPngBtn").onclick=()=>exportLetters("png");
 document.getElementById("exportLettersMarkdownBtn").onclick=()=>exportLetters("markdown");
+renderTodayLetterHint();
