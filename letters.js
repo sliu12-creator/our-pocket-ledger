@@ -30,6 +30,7 @@ const letters=[
 let letterReplies=loadLetterReplies();
 let openedLetterId=null;
 let pendingLetterExportScope=null;
+let selectedLetterExportIds=[];
 
 // 读取已保存的信件回复，兼容不存在或格式异常的旧数据
 // 输入参数：无，读取 LocalStorage 中的回复数据
@@ -139,28 +140,23 @@ function renderLetterCollection(){
  const collectionList=document.getElementById("letterCollectionList");
  collectionList.innerHTML="";
  letters.forEach((letter,index)=>{
-   const letterItem=document.createElement("div");
+   const letterItem=document.createElement("button");
+   letterItem.type="button";
    letterItem.className="letterCollectionItem";
-   const letterOpenButton=document.createElement("button");
-   letterOpenButton.type="button";
-   letterOpenButton.className="letterCollectionOpen";
+   const letterDetails=document.createElement("span");
+   letterDetails.className="letterCollectionDetails";
    const letterName=document.createElement("span");
    letterName.className="letterCollectionName";
    letterName.textContent=getLetterEmoji(letter,index)+" "+letter.title;
    const letterDate=document.createElement("span");
    letterDate.className="letterCollectionDate";
    letterDate.textContent=letter.date.replace(/-/g,".");
-   letterOpenButton.append(letterName,letterDate);
-   letterOpenButton.onclick=()=>{
+   letterDetails.append(letterName,letterDate);
+   letterItem.appendChild(letterDetails);
+   letterItem.onclick=()=>{
      closeLetterCollection();
      openLetter(letter.id);
    };
-   const exportButton=document.createElement("button");
-   exportButton.type="button";
-   exportButton.className="letterExportButton";
-   exportButton.textContent="⬇ 导出";
-   exportButton.onclick=()=>openLetterExportDialog(letter.id);
-   letterItem.append(letterOpenButton,exportButton);
    collectionList.appendChild(letterItem);
  });
 }
@@ -180,21 +176,88 @@ function closeLetterCollection(){
  document.getElementById("letterCollectionMask").style.display="none";
 }
 
-// 打开信件导出格式选择弹窗
-// 输入参数：scope，单封信件 ID 或 "all"
-// 返回结果：无，显示对应导出范围的格式选择弹窗
-function openLetterExportDialog(scope){
- pendingLetterExportScope=scope;
- document.getElementById("letterExportTitle").textContent=scope==="all"?"导出全部信件":"导出这封信";
- document.getElementById("letterExportMask").style.display="block";
+// 打开信件导出范围选择弹窗
+// 输入参数：无
+// 返回结果：无，显示部分导出或导出全部的选择
+function openLetterExportDialog(){
+ document.querySelector('input[name="letterExportScope"][value="partial"]').checked=true;
+ document.getElementById("letterExportScopeMask").style.display="block";
 }
 
-// 关闭信件导出格式选择弹窗
+// 根据选择的导出范围进入信件选择或格式选择
+// 输入参数：无，读取导出范围单选控件状态
+// 返回结果：无，显示下一步对应的弹窗
+function continueLetterExportScope(){
+ const scope=document.querySelector('input[name="letterExportScope"]:checked').value;
+ document.getElementById("letterExportScopeMask").style.display="none";
+ if(scope==="all"){
+   pendingLetterExportScope="all";
+   document.getElementById("letterFormatMask").style.display="block";
+   return;
+ }
+ renderLetterExportSelection();
+ document.getElementById("letterSelectMask").style.display="block";
+}
+
+// 渲染部分导出时可勾选的信件列表
+// 输入参数：无，使用硬编码 letters 数据
+// 返回结果：无，直接更新信件选择列表
+function renderLetterExportSelection(){
+ const selectionList=document.getElementById("letterExportSelectionList");
+ selectionList.innerHTML="";
+ selectedLetterExportIds=[];
+ letters.forEach((letter,index)=>{
+   const selectionItem=document.createElement("label");
+   selectionItem.className="letterExportSelectionItem";
+   const selectionInput=document.createElement("input");
+   selectionInput.type="checkbox";
+   selectionInput.value=letter.id;
+   selectionInput.onchange=updateSelectedLetterExportIds;
+   const selectionText=document.createElement("span");
+   selectionText.textContent=getLetterEmoji(letter,index)+" "+letter.title+" · "+letter.date.replace(/-/g,".");
+   selectionItem.append(selectionInput,selectionText);
+   selectionList.appendChild(selectionItem);
+ });
+}
+
+// 更新部分导出已勾选的信件 ID
+// 输入参数：无，读取信件选择列表的勾选状态
+// 返回结果：无，更新 selectedLetterExportIds 数组
+function updateSelectedLetterExportIds(){
+ selectedLetterExportIds=[...document.querySelectorAll('#letterExportSelectionList input:checked')].map(input=>input.value);
+}
+
+// 切换部分导出列表中的全选状态
 // 输入参数：无
-// 返回结果：无，清除导出范围并隐藏弹窗
+// 返回结果：无，更新全部复选框和已选信件 ID
+function toggleAllLetterSelections(){
+ const selectionInputs=[...document.querySelectorAll('#letterExportSelectionList input')];
+ const shouldSelectAll=selectionInputs.some(input=>!input.checked);
+ selectionInputs.forEach(input=>input.checked=shouldSelectAll);
+ updateSelectedLetterExportIds();
+ document.getElementById("selectAllLettersBtn").textContent=shouldSelectAll?"取消全选":"全选";
+}
+
+// 完成部分信件选择后进入格式选择
+// 输入参数：无，使用 selectedLetterExportIds
+// 返回结果：无，至少选择一封时显示格式选择弹窗
+function continueLetterExportSelection(){
+ updateSelectedLetterExportIds();
+ if(!selectedLetterExportIds.length)return;
+ pendingLetterExportScope=[...selectedLetterExportIds];
+ document.getElementById("letterSelectMask").style.display="none";
+ document.getElementById("letterFormatMask").style.display="block";
+}
+
+// 关闭全部信件导出流程弹窗
+// 输入参数：无
+// 返回结果：无，清除导出范围并隐藏范围、选择和格式弹窗
 function closeLetterExportDialog(){
  pendingLetterExportScope=null;
- document.getElementById("letterExportMask").style.display="none";
+ selectedLetterExportIds=[];
+ document.getElementById("letterExportScopeMask").style.display="none";
+ document.getElementById("letterSelectMask").style.display="none";
+ document.getElementById("letterFormatMask").style.display="none";
 }
 
 // 将信件内容转换为固定格式的 Markdown 文本
@@ -256,7 +319,7 @@ function createLetterCanvas(letter){
  const height=Math.max(720,padding*2+100+bodyLines.length*48+(reply?88+replyLines.length*48:0));
  canvas.width=width;
  canvas.height=height;
- context.fillStyle="#fffaf0";
+ context.fillStyle="#FFF8F1";
  context.fillRect(0,0,width,height);
  context.fillStyle="#725b48";
  context.font="bold 36px -apple-system, BlinkMacSystemFont, PingFang SC, sans-serif";
@@ -437,16 +500,18 @@ async function createLetterExportFile(letter,format){
 // 输入参数：format，pdf、png 或 markdown
 // 返回结果：无，触发单文件下载或 ZIP 下载
 async function exportLetters(format){
- const targetLetters=pendingLetterExportScope==="all"?letters:[getLetterById(pendingLetterExportScope)].filter(Boolean);
+ const targetLetters=pendingLetterExportScope==="all"?
+   letters:
+   letters.filter(letter=>Array.isArray(pendingLetterExportScope)&&pendingLetterExportScope.includes(letter.id));
  if(!targetLetters.length)return;
  const files=await Promise.all(targetLetters.map(letter=>createLetterExportFile(letter,format)));
+ closeLetterExportDialog();
  if(files.length===1){
    downloadLetterFile(files[0].blob,files[0].name);
  }else{
    const zipFiles=await Promise.all(files.map(async file=>({name:file.name,bytes:new Uint8Array(await file.blob.arrayBuffer())})));
    downloadLetterFile(createLetterZip(zipFiles),"我们的小账本_我们的信.zip");
  }
- closeLetterExportDialog();
 }
 
 document.getElementById("openTodayLetterBtn").onclick=()=>openLetter("day426");
@@ -456,7 +521,12 @@ document.getElementById("openLetterReplyBtn").onclick=openLetterReplySheet;
 document.getElementById("cancelLetterReplyBtn").onclick=closeLetterReplySheet;
 document.getElementById("saveLetterReplyBtn").onclick=saveLetterReply;
 document.getElementById("closeLetterCollectionBtn").onclick=closeLetterCollection;
-document.getElementById("openExportAllLettersBtn").onclick=()=>openLetterExportDialog("all");
+document.getElementById("openExportAllLettersBtn").onclick=openLetterExportDialog;
+document.getElementById("cancelLetterExportScopeBtn").onclick=closeLetterExportDialog;
+document.getElementById("nextLetterExportScopeBtn").onclick=continueLetterExportScope;
+document.getElementById("selectAllLettersBtn").onclick=toggleAllLetterSelections;
+document.getElementById("cancelLetterSelectionBtn").onclick=closeLetterExportDialog;
+document.getElementById("nextLetterFormatBtn").onclick=continueLetterExportSelection;
 document.getElementById("cancelLetterExportBtn").onclick=closeLetterExportDialog;
 document.getElementById("exportLettersPdfBtn").onclick=()=>exportLetters("pdf");
 document.getElementById("exportLettersPngBtn").onclick=()=>exportLetters("png");
