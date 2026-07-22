@@ -85,7 +85,16 @@ function renderTodayLetterHint(currentDate=new Date()){
 // 输入参数：letterId，来信的唯一标识
 // 返回结果：已保存的回复文字，未回复时返回空字符串
 function getLetterReply(letterId){
- return String(letterReplies[letterId]||"");
+ const savedReply=letterReplies[letterId];
+ if(savedReply&&typeof savedReply==="object")return String(savedReply.reply||"");
+ return String(savedReply||"");
+}
+
+// 判断指定信件是否已经保存了非空用户回复
+// 输入参数：letterId，来信的唯一标识
+// 返回结果：存在非空回复时返回 true
+function hasLetterReply(letterId){
+ return Boolean(getLetterReply(letterId));
 }
 
 // 返回信件在收藏列表中使用的稳定 Emoji
@@ -175,6 +184,12 @@ function renderLetterCollection(){
    letterDate.className="letterCollectionDate";
    letterDate.textContent=letter.date.replace(/-/g,".");
    letterDetails.append(letterName,letterDate);
+   if(hasLetterReply(letter.id)){
+     const replyStatus=document.createElement("span");
+     replyStatus.className="letterReplyStatus";
+     replyStatus.textContent="❤️ 已回复";
+     letterDetails.appendChild(replyStatus);
+   }
    letterItem.appendChild(letterDetails);
    letterItem.onclick=()=>{
      closeLetterCollection();
